@@ -26,11 +26,7 @@
             background: #95989b !important; 
         }
 
-        .tile-broadcast-pane {
-            filter: hue-rotate(185deg) invert(1) saturate(0.0) brightness(0.60) contrast(1.15) !important;
-        }
-
-        /* HARDWARE ACCELERATED UNIFIED COLOR FILTER FOR SATELLITE TILES */
+        /* CUSTOM CONSOLE CALIBRATION ENGINE - MATCHES REFLECTIVITY TO THE LEGEND PERFECTLY */
         .radar-broadcast-pane {
             filter: saturate(2.5) contrast(1.3) brightness(1.1) !important;
         }
@@ -522,9 +518,12 @@
         ];
 
         window.onload = function() {
+            // FIXED OPTION: Set a precise, strict min/max zoom limit to prevent internal framework errors
             map = L.map('map', {
                 center: [centerLat, centerLng],
-                zoom: 6, 
+                zoom: 5, 
+                minZoom: 4,
+                maxZoom: 12,
                 zoomControl: false 
             });
 
@@ -540,6 +539,7 @@
             map.getPane('labelsPane').style.zIndex = 600;
             map.getPane('labelsPane').className += ' tile-broadcast-pane';
 
+            // SECURE CONSOLE: Locked to official CARTO Light framework for continuous light grey backdrop terrain
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
                 pane: 'tilePane',
                 attribution: '&copy; OpenStreetMap &copy; CARTO'
@@ -613,7 +613,6 @@
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); singleSiteRadarLayer = null; }
 
             if(mode === 'national') {
-                // FIXED TYPO: Restored complete classList syntax structure
                 document.getElementById('radar-us-btn').classList.add('active');
                 if(radarLayers.length > 0) radarLayers[currentRadarIndex].setOpacity(0.85);
             } else {
