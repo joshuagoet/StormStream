@@ -23,10 +23,14 @@
             width: 100vw; 
             height: 100vh; 
             z-index: 1; 
-            background: #95989b; 
+            background: #95989b !important; 
         }
 
-        /* HARDWARE ACCELERATED UNIFIED COLOR PROCESSING FOR ALL RADAR VIEWS */
+        .tile-broadcast-pane {
+            filter: hue-rotate(185deg) invert(1) saturate(0.0) brightness(0.60) contrast(1.15) !important;
+        }
+
+        /* HARDWARE ACCELERATED UNIFIED COLOR FILTER - APPLIED TO BOTH US MOSAIC AND COORD-BOUND SINGLE RADARS */
         .radar-broadcast-pane {
             filter: saturate(2.5) contrast(1.3) brightness(1.1) !important;
         }
@@ -302,6 +306,7 @@
         
         var currentRadarMode = 'national';
         var singleSiteRadarLayer = null;
+        var currentActiveGlobalPath = ""; // Universally synchronizes live timestamp streams
 
         var centerLat = 38.9742;
         var centerLng = -90.9664;
@@ -523,30 +528,27 @@
                 zoomControl: false 
             });
 
-            // MULTI-PANE ARCHITECTURE DEFINITION
-            // Lower Layer: Background Dark-Grey Basemap
+            // MULTI-PANE INTERCEPT LAYER STACK
             map.createPane('tilePane');
             map.getPane('tilePane').style.zIndex = 200;
             map.getPane('tilePane').className += ' tile-broadcast-pane';
 
-            // Middle Layer: Saturation/Contrast Calibration Filter Container
             map.createPane('radarPane');
             map.getPane('radarPane').style.zIndex = 400;
             map.getPane('radarPane').className += ' radar-broadcast-pane';
 
-            // Top Layer: Clean Vector Street Labels & County Boundary Lines
             map.createPane('labelsPane');
             map.getPane('labelsPane').style.zIndex = 600;
             map.getPane('labelsPane').className += ' tile-broadcast-pane';
 
-            // Mount the base dark background frame
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+            // Light neutral gray terrain backdrop configuration
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
                 pane: 'tilePane',
                 attribution: '&copy; OpenStreetMap &copy; CARTO'
             }).addTo(map);
 
-            // Mount the transparent top city label frame directly *above* the radar pane
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
+            // Floating vector street names and boundary layers on top
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
                 pane: 'labelsPane',
                 pointerEvents: 'none'
             }).addTo(map);
@@ -614,7 +616,7 @@
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); singleSiteRadarLayer = null; }
 
             if(mode === 'national') {
-                document.getElementById('radar-us-btn').classList.add('active');
+                document.getElementById('radar-us-btn').add('active');
                 if(radarLayers.length > 0) radarLayers[currentRadarIndex].setOpacity(0.85);
             } else {
                 document.getElementById('radar-site-btn').classList.add('active');
@@ -624,33 +626,39 @@
             }
         }
 
+        // RE-ENGINEERED COMPOSITE CROPPING DISPATCH CORE
         function loadSingleSiteRadar() {
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); }
             
             var dropdown = document.getElementById('radar-station-dropdown');
             var selectedOption = dropdown.options[dropdown.selectedIndex];
-            if (!selectedOption) return;
-
-            var stationID = selectedOption.value.toUpperCase();
-
-            // FIXED OPTION: Appends custom palette parameter straight into the WMS generation string
-            singleSiteRadarLayer = L.tileLayer.wms("https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/ridge.cgi", {
-                layers: 'single',
-                format: 'image/png',
-                transparent: true,
-                opacity: 0.85,
-                pane: 'radarPane',
-                sector: stationID,
-                prod: 'N0B',
-                custom_palette: '1', // Commands server cluster to build frames matching your exact US Mosaic colors
-                attribution: 'IEM RIDGE',
-                cacheBuster: Date.now() 
-            }).addTo(map);
+            if (!selectedOption || !currentActiveGlobalPath) return;
 
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
-            map.setView([lat, lon], 6); 
 
+            // Calculate precise 300km geographical clipping mask dimensions surrounding the dome tower
+            var deltaOffset = 1.35; 
+            var southernLatitude = lat - deltaOffset;
+            var northernLatitude = lat + deltaOffset;
+            var westernLongitude = lon - deltaOffset;
+            var easternLongitude = lon + deltaOffset;
+
+            var filterClippingBounds = L.latLngBounds(
+                [southernLatitude, westernLongitude],
+                [northernLatitude, easternLongitude]
+            );
+
+            // Pulls live RainViewer composite tiles but wraps them inside the coordinate filter bounds box
+            singleSiteRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${currentActiveGlobalPath}/256/{z}/{x}/{y}/2/1_1.png`, {
+                opacity: 0.85,
+                pane: 'radarPane',
+                bounds: filterClippingBounds, // Cuts away neighboring station data perfectly
+                maxZoom: 18,
+                cacheBuster: Date.now() 
+            }).addTo(map);
+
+            map.setView([lat, lon], 6); 
             document.getElementById('coords-display').innerHTML = "Active Target: " + selectedOption.text.split(' (')[0];
         }
 
@@ -738,6 +746,9 @@
                 .then(res => res.json())
                 .then(metadata => {
                     const displayFrames = metadata.radar.past.slice(-5); 
+                    
+                    // Maps active server timestamp paths directly into memory vectors
+                    currentActiveGlobalPath = displayFrames[displayFrames.length - 1].path;
                     
                     displayFrames.forEach((frame) => {
                         const radarLayer = L.tileLayer(`https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, {
