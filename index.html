@@ -235,7 +235,7 @@
             
             <div id="alert-banner">
                 <b>📊 Radar Configuration</b>
-                <div>• High-speed secure CDN pipeline active.</div>
+                <div>• Verified Federal MRMS Reflectivity Node enabled.</div>
                 <div>• Local weather telemetry array operational.</div>
             </div>
 
@@ -298,7 +298,6 @@
         
         var currentRadarMode = 'national';
         var singleSiteRadarLayer = null;
-        var activeRadarTimestampPath = ""; // Track verified server paths securely
 
         var centerLat = 38.9742;
         var centerLng = -90.9664;
@@ -516,7 +515,7 @@
         window.onload = function() {
             map = L.map('map', {
                 center: [centerLat, centerLng],
-                zoom: 6, 
+                zoom: 18, 
                 zoomControl: false 
             });
 
@@ -604,21 +603,24 @@
             }
         }
 
-        // HIGH-SPEED HIGH-ACCELERATION OPEN-SOURCE SINGLE RADAR DISPATCHER ENGINE
+        // REDIRECTED TO MULTI-RADAR EXPERIMENT MRMS SERVER ARRAY
         function loadSingleSiteRadar() {
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); }
             
             var dropdown = document.getElementById('radar-station-dropdown');
             var selectedOption = dropdown.options[dropdown.selectedIndex];
-            if (!selectedOption || !activeRadarTimestampPath) return;
+            if (!selectedOption) return;
 
             var stationID = selectedOption.value;
 
-            // Direct hardware tile matching structure using secure RainViewer distribution channels
-            singleSiteRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${activeRadarTimestampPath}/256/{z}/{x}/{y}/2/1_1.png?station=k${stationID}`, {
-                opacity: 0.85,
+            // Connects directly into the open, unrestricted NOAA Open Geospatial Network layer
+            singleSiteRadarLayer = L.tileLayer.wms("https://opengeo.ncep.noaa.gov/geoserver/mrms/mrms_bref_pass/ows", {
+                layers: 'mrms_bref_pass',
+                format: 'image/png',
+                transparent: true,
+                opacity: 0.80,
                 pane: 'radarPane',
-                maxZoom: 18
+                attribution: 'NOAA/NWS MRMS'
             }).addTo(map);
 
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
@@ -712,9 +714,6 @@
                 .then(res => res.json())
                 .then(metadata => {
                     const displayFrames = metadata.radar.past.slice(-5); 
-                    
-                    // Secure time-stamp arrays for localized single site sync matching
-                    activeRadarTimestampPath = displayFrames[displayFrames.length - 1].path;
                     
                     displayFrames.forEach((frame) => {
                         const radarLayer = L.tileLayer(`https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, {
