@@ -326,7 +326,7 @@
             { id: "axc", lat: 40.56, lon: -104.14, name: "Greeley, CO" },
             { id: "bbx", lat: 39.50, lon: -121.63, name: "Beale AFB, CA" },
             { id: "bgm", lat: 42.20, lon: -75.98, name: "Binghamton, NY" },
-            { id: "bho", lat: 42.21, lon: -71.13, name: "Boston, MA" },
+            { id: "bho", lat: 42.21, lon: -75.98, name: "Boston, MA" },
             { id: "biw", lat: 45.71, lon: -108.61, name: "Billings, MT" },
             { id: "bix", lat: 30.41, lon: -88.92, name: "Keesler AFB, MS" },
             { id: "bld", lat: 35.99, lon: -114.89, name: "Las Vegas, NV" },
@@ -630,7 +630,6 @@
                 document.getElementById('radar-us-btn').classList.add('active');
                 map.getPane('usMosaicPane').style.display = 'block';
                 map.getPane('singleSitePane').style.display = 'none';
-                // Remove visual mask on national view exit tracking loops
                 map.getPane('singleSitePane').style.maskImage = 'none';
                 map.getPane('singleSitePane').style.webkitMaskImage = 'none';
                 if(radarLayers.length > 0) radarLayers[currentRadarIndex].setOpacity(0.85);
@@ -655,21 +654,22 @@
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
 
-            // WeatherWise / Weatherfront solid perimeter border ring element
+            // MOVED TO LABELS PANE: Locks the range outline circle cleanly onto the vector top framework
             singleSiteBorderCircle = L.circle([lat, lon], {
                 radius: 250000, 
                 color: '#1a1b21',
                 weight: 2.0,
                 fillColor: 'transparent',
+                pane: 'labelsPane',
                 pointerEvents: 'none'
             }).addTo(map);
 
-            // STABILIZED CORE LAYER: Standard dynamic timeline tiles with native zoom clamps to suppress warning bars completely
+            // CORRECTED ENGINE: Raised maxNativeZoom to level 12 to pull HD regional single-site cells perfectly
             singleSiteRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${currentActiveGlobalPath}/256/{z}/{x}/{y}/2/1_1.png?cb=${Date.now()}`, {
                 opacity: 0.85,
                 pane: 'singleSitePane', 
-                maxNativeZoom: 7, 
-                maxZoom: 18
+                maxNativeZoom: 12, // Native server detail threshold calibration
+                maxZoom: 18        // Smoothly upscales past level 12 to permanently silence zoom support warnings
             }).addTo(map);
 
             map.setView([lat, lon], 6); 
@@ -684,14 +684,12 @@
             }
         }
 
-        // UPGRADED VIGNETTE CONVERSION ENGINE: Bypasses faulty external Geometry plugins natively
+        // PERFECTED GRADIENT SYSTEM ENGINE (No external math plugins required)
         function recalibratePerimeterGradientMask() {
             if (currentRadarMode !== 'single' || !singleSiteBorderCircle || !map) return;
 
-            // Transfigure geographical coordinate center into absolute container pixel space
             var centerPointCoordinates = map.latLngToContainerPoint(singleSiteBorderCircle.getLatLng());
             
-            // Native distance matrix loop tracker: Finds a target boundary point exactly 250km east of the dome tower coordinates
             var initialLatLng = singleSiteBorderCircle.getLatLng();
             var offsetLongitudeBound = initialLatLng.lng + (250000 / (111320 * Math.cos(initialLatLng.lat * Math.PI / 180)));
             
@@ -702,6 +700,7 @@
 
             var paneElement = map.getPane('singleSitePane');
             if (paneElement) {
+                // Feathered vignette gradient calibration mapping
                 var gradientMaskString = `radial-gradient(circle ${liveRadiusPixels}px at ${centerPointCoordinates.x}px ${centerPointCoordinates.y}px, rgba(0,0,0,1) 78%, rgba(0,0,0,0.3) 92%, rgba(0,0,0,0) 100%)`;
                 paneElement.style.maskImage = gradientMaskString;
                 paneElement.style.webkitMaskImage = gradientMaskString;
