@@ -52,7 +52,6 @@
         .brand-container { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
         #hud-panel h1 { margin: 0; font-size: 15px; color: #ff0055; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 900; }
         
-        /* THE STYLED BLACK OUTLINE AND WHITE TEXT FILL HEADER */
         #coords-display { 
             margin: 6px 0 8px 0; 
             font-size: 13px; 
@@ -212,13 +211,12 @@
             <div class="brand-container">
                 <h1>StormStream</h1>
             </div>
-            <!-- THE MODIFIED HEADLINE HOOK FOR CSS OUTLINING -->
             <h2 id="coords-display">Active Target: Lincoln County, MO</h2>
             
             <div id="alert-banner">
                 <b>📊 Forecast Highlights</b>
-                <div>• Interface configuration optimized for deployments.</div>
-                <div>• Local weather telemetry array operational.</div>
+                <div>• Synchronized sidebar warning layers active.</div>
+                <div>• Precision network streams deployed.</div>
             </div>
 
             <div class="radar-type-grid">
@@ -279,23 +277,6 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        var backupAlertDatabase = [
-            {
-                "type": "Feature",
-                "properties": {
-                    "event": "Severe Thunderstorm Warning",
-                    "areaDesc": "Lincoln, MO; St. Charles, MO",
-                    "instruction": "THREAT...60MPH WIND GUSTS AND QUARTER SIZED HAIL. Seek shelter inside a sturdy building immediately."
-                },
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [[
-                        [-91.15, 39.15], [-90.65, 39.20], [-90.50, 38.85], [-91.05, 38.80], [-91.15, 39.15]
-                    ]]
-                }
-            }
-        ];
-
         window.onload = function() {
             map = L.map('map', {
                 center: [centerLat, centerLng],
@@ -321,16 +302,15 @@
             initRainViewerRadar();
             loadWeatherAlertPipeline();
 
+            setInterval(loadWeatherAlertPipeline, 30000);
             setInterval(updateClockDisplay, 1000);
         };
 
         function loadWeatherAlertPipeline() {
-            // Pulls live active alerts straight from the National Weather Service API
             fetch("https://api.weather.gov/alerts/active?status=actual")
                 .then(response => response.json())
                 .then(data => {
                     if (data && data.features) {
-                        // Filters down to only show actual warnings, bypassing watches or advisories
                         masterAlertFeatures = data.features.filter(f => {
                             const ev = (f.properties.event || "").toUpperCase();
                             return ev.includes("WARNING");
@@ -342,7 +322,7 @@
                         plotWarningPolygonsOnMap();
                     }
                 })
-                .catch(err => console.error("NWS Live Stream Anomaly:", err));
+                .catch(err => console.error("NWS Stream Sync Interruption:", err));
         }
 
         function switchRadarMode(mode) {
@@ -374,7 +354,7 @@
             }).addTo(map);
         }
 
-  function plotWarningPolygonsOnMap() {
+        function plotWarningPolygonsOnMap() {
             polygonAlertGroup.clearLayers();
 
             masterAlertFeatures.forEach(feature => {
@@ -384,27 +364,24 @@
                 const eventName = properties.event || "Weather Event";
                 const eventUpper = eventName.toUpperCase();
 
-                // Skip pure watches or advisories to keep the map clean
                 if (eventUpper.includes("WATCH") || eventUpper.includes("ADVISORY")) return;
 
-                // Default baseline properties (Marine/Special Warnings)
-                let strokeColor = "#a855f7"; // Purple default
+                let strokeColor = "#a855f7"; 
                 let strokeWeight = 2.0; 
                 let fillAlpha = 0.10; 
                 let themeClass = ""; 
 
-                // Accurate matching algorithm for real-time NWS event definitions
                 if (eventUpper.includes("TORNADO")) {
-                    strokeColor = "#FF0000"; // Bright Red
+                    strokeColor = "#FF0000"; 
                     strokeWeight = 4.0; 
                     fillAlpha = 0.25; 
                     themeClass = "tornado-warn";
                 } else if (eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM")) {
-                    strokeColor = "#FFAA00"; // Sharp Orange / Yellow
+                    strokeColor = "#FFAA00"; 
                     strokeWeight = 2.5; 
                     fillAlpha = 0.15;
                 } else if (eventUpper.includes("FLASH FLOOD") || eventUpper.includes("FLOOD")) {
-                    strokeColor = "#00FF00"; // Neon Green
+                    strokeColor = "#00FF00"; 
                     strokeWeight = 2.5; 
                     fillAlpha = 0.15; 
                     themeClass = "flash-flood-warn";
@@ -429,14 +406,9 @@
             if (!feedContainer) return;
             feedContainer.innerHTML = "";
 
- function renderFilteredAlerts() {
-            const feedContainer = document.getElementById('bulletin-feed-container');
-            if (!feedContainer) return;
-            feedContainer.innerHTML = "";
-
             let renderedCount = 0;
             for (let i = 0; i < masterAlertFeatures.length; i++) {
-                if (renderedCount >= 25) break; // Increased capacity for active event cycles
+                if (renderedCount >= 25) break;
 
                 const alertProps = masterAlertFeatures[i].properties;
                 const eventName = alertProps.event || "Hazard Alert";
@@ -446,15 +418,14 @@
                 const areaDesc = alertProps.areaDesc || "Regional Sector";
                 const instruction = alertProps.instruction || alertProps.description || "Monitor lines continuously.";
 
-                // MATCHING LOGIC FOR SIDEBAR TEXT COLORS
-                let textColor = "#a855f7"; // Default purple for special/marine warnings
+                let textColor = "#a855f7"; 
 
                 if (eventUpper.includes("TORNADO")) {
-                    textColor = "#FF3333"; // Vibrant Red for dark theme readability
+                    textColor = "#FF3333"; 
                 } else if (eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM")) {
-                    textColor = "#FFAA00"; // Sharp Orange
+                    textColor = "#FFAA00"; 
                 } else if (eventUpper.includes("FLASH FLOOD") || eventUpper.includes("FLOOD")) {
-                    textColor = "#00FF00"; // Neon Green
+                    textColor = "#00FF00"; 
                 }
 
                 const itemDiv = document.createElement('div');
@@ -517,7 +488,6 @@
             document.getElementById('play-btn').innerText = playbackActive ? "PAUSE" : "RESUME";
         }
 
-        // TARGET HANDLER ENGINE
         function executeLocalTargetReset() {
             var locationInput = document.getElementById('city-search-input').value.trim();
             if(locationInput === "") return;
@@ -527,10 +497,7 @@
                 .then(resData => {
                     if(resData && resData.length > 0) {
                         map.setView([parseFloat(resData[0].lat), parseFloat(resData[0].lon)], 8);
-                        
-                        // UPDATES VIA INNERHTML TO KEEP OUTLINE FILTER ACTIVE
                         document.getElementById('coords-display').innerHTML = "Active Target: " + resData[0].display_name.split(',')[0] + ", " + resData[0].display_name.split(',')[1];
-                        
                         if(currentRadarMode === 'single') loadSingleSiteRadar();
                     }
                 }).catch(() => {});
