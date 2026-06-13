@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StormStream - North American Threat Operations Center</title>    
+    <title>StormStream - US Threat Operations Center</title>    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <style>
         html, body { 
@@ -117,7 +117,6 @@
             font-size: 11px;
             font-weight: bold;
             outline: none;
-            max-height: 200px;
         }
 
         #threat-center-wrapper {
@@ -235,19 +234,34 @@
             
             <div id="alert-banner">
                 <b>📊 Radar Configuration</b>
-                <div>• Auto-compiling US/Canada station index array.</div>
+                <div>• Direct IEM server hook configured.</div>
                 <div>• Local weather telemetry array operational.</div>
             </div>
 
             <div class="radar-type-grid">
-                <button id="radar-us-btn" class="radar-select-btn active" onclick="switchRadarMode('national')">NA Composite</button>
+                <button id="radar-us-btn" class="radar-select-btn active" onclick="switchRadarMode('national')">US Mosaic</button>
                 <button id="radar-site-btn" class="radar-select-btn" onclick="switchRadarMode('single')">Single-Site</button>
             </div>
 
-            <!-- DIGITAL STATION MENU ASSEMBLY WRAPPER -->
+            <!-- ROCK-SOLID DEDICATED US NEXRAD HARDWARE TUNER MENU -->
             <div id="station-toggle-box" class="station-selector-wrapper">
                 <select id="radar-station-dropdown" onchange="executeStationChangeToggle()">
-                    <option value="">Initializing Station Array...</option>
+                    <!-- MAIN HIGH-ACTIVITY CORRIDORS -->
+                    <option value="lsx" data-lat="38.97" data-lon="-90.96">St. Louis, MO (KLSX)</option>
+                    <option value="eax" data-lat="38.82" data-lon="-94.26">Kansas City, MO (KEAX)</option>
+                    <option value="ilx" data-lat="40.15" data-lon="-89.33">Lincoln, IL (KILX)</option>
+                    <option value="lot" data-lat="41.60" data-lon="-88.08">Chicago, IL (KLOT)</option>
+                    <option value="dmx" data-lat="41.73" data-lon="-93.72">Des Moines, IA (KDMX)</option>
+                    <option value="ict" data-lat="37.65" data-lon="-97.44">Wichita, KS (KICT)</option>
+                    <option value="tlx" data-lat="35.33" data-lon="-97.27">Oklahoma City, OK (KTLX)</option>
+                    <option value="fwd" data-lat="32.57" data-lon="-97.30">Dallas, TX (KFWD)</option>
+                    <option value="ama" data-lat="35.23" data-lon="-101.71">Amarillo, TX (KAMA)</option>
+                    <option value="meg" data-lat="35.34" data-lon="-89.87">Memphis, TN (KMEG)</option>
+                    <option value="ohx" data-lat="36.25" data-lon="-86.56">Nashville, TN (KOHX)</option>
+                    <option value="htx" data-lat="34.93" data-lon="-86.08">Huntsville, AL (KHTX)</option>
+                    <option value="tlh" data-lat="30.39" data-lon="-84.33">Tallahassee, FL (KTLH)</option>
+                    <option value="dix" data-lat="40.01" data-lon="-74.41">Philadelphia/New York (KDIX)</option>
+                    <option value="eyx" data-lat="34.63" data-lon="-120.39">Los Angeles, CA (KEYX)</option>
                 </select>
             </div>
 
@@ -300,7 +314,6 @@
         
         var currentRadarMode = 'national';
         var singleSiteRadarLayer = null;
-        var masterGlobalRadarPath = "";
 
         var centerLat = 38.9742;
         var centerLng = -90.9664;
@@ -329,7 +342,6 @@
 
             initRainViewerRadar();
             loadWeatherAlertPipeline();
-            compileNorthAmericanStationMatrix();
 
             setInterval(loadWeatherAlertPipeline, 30000);
             setInterval(updateClockDisplay, 1000);
@@ -360,38 +372,6 @@
                 .catch(err => console.error(err));
         }
 
-        // AUTOMATED NORTH AMERICAN STATION COMPILER PIPELINE
-        function compileNorthAmericanStationMatrix() {
-            fetch("https://api.rainviewer.com/public/weather-maps.json")
-                .then(res => res.json())
-                .then(data => {
-                    if (!data.radar || !data.radar.individual) return;
-                    
-                    // Filter down to only US and Canada radar hardware arrays
-                    let naStations = data.radar.individual.filter(station => {
-                        return station.country_code === "US" || station.country_code === "CA";
-                    });
-
-                    // Sort stations alphabetically by name/region location
-                    naStations.sort((a, b) => a.name.localeCompare(b.name));
-
-                    const dropdown = document.getElementById('radar-station-dropdown');
-                    dropdown.innerHTML = ""; // Clear loader placeholder
-
-                    naStations.forEach(station => {
-                        let opt = document.createElement('option');
-                        opt.value = station.id;
-                        opt.setAttribute('data-lat', station.lat);
-                        opt.setAttribute('data-lon', station.lon);
-                        
-                        let tag = station.country_code === "US" ? "[US]" : "[CAN]";
-                        opt.text = `${tag} - ${station.name} (${station.id.toUpperCase()})`;
-                        dropdown.appendChild(opt);
-                    });
-                })
-                .catch(err => console.error("Station Compilation Anomaly:", err));
-        }
-
         function switchRadarMode(mode) {
             currentRadarMode = mode;
             document.getElementById('radar-us-btn').classList.remove('active');
@@ -416,21 +396,24 @@
             
             var dropdown = document.getElementById('radar-station-dropdown');
             var selectedOption = dropdown.options[dropdown.selectedIndex];
-            if (!selectedOption || !selectedOption.value || !masterGlobalRadarPath) return;
+            if (!selectedOption) return;
 
-            // Build precision hardware overlay path via RainViewer structure
-            singleSiteRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${masterGlobalRadarPath}/256/{z}/{x}/{y}/2/1_1.png?station=${selectedOption.value}`, {
+            var stationID = selectedOption.value;
+
+            // Secure, dedicated WMS pipeline directly over official US government hardware nodes
+            singleSiteRadarLayer = L.tileLayer.wms("https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q.cgi", {
+                layers: `single-${stationID}-n0q`,
+                format: 'image/png',
+                transparent: true,
                 opacity: 0.85,
-                pane: 'radarPane',
-                maxZoom: 18
+                pane: 'radarPane'
             }).addTo(map);
 
-            // Fetch structural positioning metrics to focus camera array
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
             map.setView([lat, lon], 8);
 
-            document.getElementById('coords-display').innerHTML = "Active Target: " + selectedOption.text.split(' - ')[1];
+            document.getElementById('coords-display').innerHTML = "Active Target: " + selectedOption.text.split(' (')[0];
         }
 
         function executeStationChangeToggle() {
@@ -517,7 +500,6 @@
                 .then(res => res.json())
                 .then(metadata => {
                     const displayFrames = metadata.radar.past.slice(-5); 
-                    masterGlobalRadarPath = displayFrames[displayFrames.length - 1].path;
                     
                     displayFrames.forEach((frame) => {
                         const radarLayer = L.tileLayer(`https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, {
