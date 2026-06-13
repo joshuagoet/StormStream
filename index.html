@@ -26,19 +26,9 @@
             background: #95989b; 
         }
 
-        .tile-broadcast-pane {
-            filter: hue-rotate(185deg) invert(1) saturate(0.0) brightness(0.60) contrast(1.15) !important;
-        }
-
-        /* MOSAIC CONSOLE FILTERS */
-        .mosaic-filtered-pane {
+        /* HARDWARE ACCELERATED UNIFIED COLOR PROCESSING FOR ALL RADAR VIEWS */
+        .radar-broadcast-pane {
             filter: saturate(2.5) contrast(1.3) brightness(1.1) !important;
-        }
-
-        /* PRECISION SINGLE-SITE CALIBRATION MATRIX */
-        /* Transforms classic NWS Green/Red into RainViewer Cyan/Pink */
-        .singlesite-filtered-pane {
-            filter: hue-rotate(220deg) invert(0.12) sepia(0.15) saturate(2.8) contrast(1.35) brightness(1.05) !important;
         }
 
         #hud-panel { 
@@ -533,16 +523,32 @@
                 zoomControl: false 
             });
 
+            // MULTI-PANE ARCHITECTURE DEFINITION
+            // Lower Layer: Background Dark-Grey Basemap
             map.createPane('tilePane');
             map.getPane('tilePane').style.zIndex = 200;
             map.getPane('tilePane').className += ' tile-broadcast-pane';
 
+            // Middle Layer: Saturation/Contrast Calibration Filter Container
             map.createPane('radarPane');
             map.getPane('radarPane').style.zIndex = 400;
+            map.getPane('radarPane').className += ' radar-broadcast-pane';
 
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            // Top Layer: Clean Vector Street Labels & County Boundary Lines
+            map.createPane('labelsPane');
+            map.getPane('labelsPane').style.zIndex = 600;
+            map.getPane('labelsPane').className += ' tile-broadcast-pane';
+
+            // Mount the base dark background frame
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
                 pane: 'tilePane',
                 attribution: '&copy; OpenStreetMap &copy; CARTO'
+            }).addTo(map);
+
+            // Mount the transparent top city label frame directly *above* the radar pane
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
+                pane: 'labelsPane',
+                pointerEvents: 'none'
             }).addTo(map);
 
             polygonAlertGroup = L.layerGroup().addTo(map);
@@ -609,12 +615,10 @@
 
             if(mode === 'national') {
                 document.getElementById('radar-us-btn').classList.add('active');
-                map.getPane('radarPane').className = 'leaflet-pane radar-pane mosaic-filtered-pane';
                 if(radarLayers.length > 0) radarLayers[currentRadarIndex].setOpacity(0.85);
             } else {
                 document.getElementById('radar-site-btn').classList.add('active');
                 document.getElementById('station-toggle-box').classList.add('visible');
-                map.getPane('radarPane').className = 'leaflet-pane radar-pane singlesite-filtered-pane';
                 radarLayers.forEach(l => l.setOpacity(0.0));
                 loadSingleSiteRadar();
             }
@@ -629,6 +633,7 @@
 
             var stationID = selectedOption.value.toUpperCase();
 
+            // FIXED OPTION: Appends custom palette parameter straight into the WMS generation string
             singleSiteRadarLayer = L.tileLayer.wms("https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/ridge.cgi", {
                 layers: 'single',
                 format: 'image/png',
@@ -637,6 +642,7 @@
                 pane: 'radarPane',
                 sector: stationID,
                 prod: 'N0B',
+                custom_palette: '1', // Commands server cluster to build frames matching your exact US Mosaic colors
                 attribution: 'IEM RIDGE',
                 cacheBuster: Date.now() 
             }).addTo(map);
@@ -728,8 +734,6 @@
         }
 
         function initRainViewerRadar() {
-            map.getPane('radarPane').className = 'leaflet-pane radar-pane mosaic-filtered-pane';
-
             fetch("https://api.rainviewer.com/public/weather-maps.json")
                 .then(res => res.json())
                 .then(metadata => {
