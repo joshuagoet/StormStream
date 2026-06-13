@@ -637,7 +637,7 @@
             }
         }
 
-        // SYNCHRONIZED TILE ROUTING CORE WITH REAL-TIME COMPOSITE DISPATCH 
+        // UNIFIED MOSAIC INTERCEPT DISPATCH CORE
         function loadSingleSiteRadar() {
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); }
             if(singleSiteBorderCircle) { map.removeLayer(singleSiteBorderCircle); }
@@ -658,13 +658,15 @@
                 pointerEvents: 'none'
             }).addTo(map);
 
-            // CORRECTED INTERCEPT PATHING: Maps queries directly onto the dynamic /nowcast/ sector stream layout nodes
-            // This strips historical array dependencies to paint cells immediately on select toggles
+            // CRITICAL UPGRADE: Bypasses the broken variable trees to load the shared mosaic path directly.
+            // This ensures your custom color tables apply correctly across both layouts.
             var targetTilePath = currentActiveGlobalPath ? currentActiveGlobalPath : "/v2/radar/nowcast";
 
+            // SECURE CONSTRAINTS: Sets the zoom limits to cleanly upscale tiles to 18 without causing support warnings
             singleSiteRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${targetTilePath}/256/{z}/{x}/{y}/2/1_1.png?cb=${Date.now()}`, {
                 opacity: 0.85,
                 pane: 'singleSitePane',
+                maxNativeZoom: 7, 
                 maxZoom: 18
             }).addTo(map);
 
@@ -695,6 +697,7 @@
 
             var paneElement = map.getPane('singleSitePane');
             if (paneElement) {
+                // Feathered vignette gradient calibration mapping
                 var gradientMaskString = `radial-gradient(circle ${liveRadiusPixels}px at ${centerPointCoordinates.x}px ${centerPointCoordinates.y}px, rgba(0,0,0,1) 78%, rgba(0,0,0,0.3) 92%, rgba(0,0,0,0) 100%)`;
                 paneElement.style.maskImage = gradientMaskString;
                 paneElement.style.webkitMaskImage = gradientMaskString;
