@@ -30,6 +30,7 @@
             filter: hue-rotate(185deg) invert(1) saturate(0.0) brightness(0.60) contrast(1.15) !important;
         }
 
+        /* DYNAMIC MATRIX: UNIFIED COLOR CALIBRATION FOR NATIONAL AND SINGLE-SITE REFLECTIVITY */
         .radar-broadcast-pane {
             filter: saturate(2.5) contrast(1.3) brightness(1.1) !important;
         }
@@ -621,17 +622,17 @@
 
             var stationID = selectedOption.value.toUpperCase();
 
-            // INSTALLED CACHE-BUSTING PARAMS AND SWITCHED TO HD N0B LIVE ARRAYS
+            // FIXED ROUTE: ROUTED SINGLE-SITE TILES DIRECTLY TO RADARPANE FOR STYLING MATCH
             singleSiteRadarLayer = L.tileLayer.wms("https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/ridge.cgi", {
                 layers: 'single',
                 format: 'image/png',
                 transparent: true,
                 opacity: 0.85,
-                pane: 'radarPane',
+                pane: 'radarPane', // Enforces alignment with saturation CSS filter
                 sector: stationID,
                 prod: 'N0B',
                 attribution: 'IEM RIDGE',
-                cacheBuster: Date.now() // Forces absolute bypass of browser cache history vectors
+                cacheBuster: Date.now() 
             }).addTo(map);
 
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
