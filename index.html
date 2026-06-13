@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StormStream - US Threat Operations Center</title>    
+    <title>StormStream</title>    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <style>
         html, body { 
@@ -234,9 +234,16 @@
             <h2 id="coords-display">Active Target: Lincoln County, MO</h2>
             
             <div id="alert-banner">
-                <b>📊 Radar Configuration</b>
-                <div>• Verified Federal MRMS Reflectivity Node enabled.</div>
-                <div>• Local weather telemetry array operational.</div>
+                <b>Forecast Highlights</b>
+                <div>.KEY MESSAGES...</div>
+                <div>- Thunderstorms are possible Saturday morning across portions of the</div>
+                <div>region. The severe weather threat with these is low.</div>
+                <div>                                                                    </div>
+                <div>- Additional thunderstorms are expected along a cold front Saturday</div>
+                <div>evening. These will have a greater threat for damaging winds.</div>
+                <div>                                                                    </div>
+                <div>- Below normal temperatures and dry conditions are expected Sunday</div>
+                <div>into early next week.</div>
             </div>
 
             <div class="radar-type-grid">
@@ -620,7 +627,7 @@
                 transparent: true,
                 opacity: 0.80,
                 pane: 'radarPane',
-                attribution: 'NOAA/NWS MRMS'
+                attribution: 'NOAA/NWS MRMS.'
             }).addTo(map);
 
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
