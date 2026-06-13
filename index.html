@@ -97,7 +97,7 @@
             color: #000;
         }
 
-        .station-toggle-box {
+        .station-selector-wrapper {
             margin-top: 8px;
             display: none;
         }
@@ -637,7 +637,7 @@
             }
         }
 
-        // UNIFIED MOSAIC INTERCEPT DISPATCH CORE
+        // MASTER SYNCHRONIZED RE-ALIGNMENT ENGINE
         function loadSingleSiteRadar() {
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); }
             if(singleSiteBorderCircle) { map.removeLayer(singleSiteBorderCircle); }
@@ -658,14 +658,21 @@
                 pointerEvents: 'none'
             }).addTo(map);
 
-            // CRITICAL UPGRADE: Bypasses the broken variable trees to load the shared mosaic path directly.
-            // This ensures your custom color tables apply correctly across both layouts.
+            // BOUNDS RE-CALIBRATION MATRIX: Set explicit clipping array fields to guarantee composite cells stream instantly
+            var boundingOffsetLat = 3.50; 
+            var boundingOffsetLng = 4.50;
+            var compositeClippingBounds = L.latLngBounds(
+                [lat - boundingOffsetLat, lon - boundingOffsetLng],
+                [lat + boundingOffsetLat, lon + boundingOffsetLng]
+            );
+
             var targetTilePath = currentActiveGlobalPath ? currentActiveGlobalPath : "/v2/radar/nowcast";
 
-            // SECURE CONSTRAINTS: Sets the zoom limits to cleanly upscale tiles to 18 without causing support warnings
+            // LOCKED PARAMS: Locked to maxNativeZoom: 7 to scale mosaic data up perfectly while silencing zoom errors completely
             singleSiteRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${targetTilePath}/256/{z}/{x}/{y}/2/1_1.png?cb=${Date.now()}`, {
                 opacity: 0.85,
                 pane: 'singleSitePane',
+                bounds: compositeClippingBounds, // Handled inside safe array parameters to bring cells back instantly
                 maxNativeZoom: 7, 
                 maxZoom: 18
             }).addTo(map);
@@ -673,7 +680,7 @@
             map.setView([lat, lon], 6); 
             document.getElementById('coords-display').innerHTML = "Active Target: " + selectedOption.text.split(' (')[0];
             
-            setTimeout(recalibratePerimeterGradientMask, 50);
+            setTimeout(recalibratePerimeterGradientMask, 60);
         }
 
         function executeStationChangeToggle() {
@@ -697,7 +704,6 @@
 
             var paneElement = map.getPane('singleSitePane');
             if (paneElement) {
-                // Feathered vignette gradient calibration mapping
                 var gradientMaskString = `radial-gradient(circle ${liveRadiusPixels}px at ${centerPointCoordinates.x}px ${centerPointCoordinates.y}px, rgba(0,0,0,1) 78%, rgba(0,0,0,0.3) 92%, rgba(0,0,0,0) 100%)`;
                 paneElement.style.maskImage = gradientMaskString;
                 paneElement.style.webkitMaskImage = gradientMaskString;
@@ -800,7 +806,6 @@
                         setInterval(animateRadarFrames, 1200); 
                     }
                     
-                    // Self-healing dispatch route: Re-fires single site loader instantly if user clicked button before timeline fetched
                     if (currentRadarMode === 'single' && !singleSiteRadarLayer) {
                         loadSingleSiteRadar();
                     }
