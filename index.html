@@ -518,11 +518,10 @@
         ];
 
         window.onload = function() {
-            // UPDATED: Extended maxZoom threshold to 18 to remove the scale conflict message permanently
             map = L.map('map', {
                 center: [centerLat, centerLng],
                 zoom: 6, 
-                minZoom: 4,
+                minZoom: 3,
                 maxZoom: 18,
                 zoomControl: false 
             });
@@ -545,16 +544,20 @@
             });
             map.addLayer(new blankCanvasContainer());
 
-            // Light vector border and text layouts mapped over the neutral backdrop
+            // FIXED RULES: Injected explicit upscale rendering commands to allow full zoom 18 support without dropping out
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
                 pane: 'tilePane',
-                opacity: 0.18 
+                opacity: 0.18,
+                maxNativeZoom: 12, // Native CARTO rendering limit
+                maxZoom: 18        // Forces Leaflet to gracefully upscale levels 13-18 automatically
             }).addTo(map);
 
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
                 pane: 'labelsPane',
                 pointerEvents: 'none',
-                opacity: 0.85 
+                opacity: 0.85,
+                maxNativeZoom: 12, // Native CARTO rendering limit
+                maxZoom: 18        // Forces Leaflet to gracefully upscale levels 13-18 automatically
             }).addTo(map);
 
             polygonAlertGroup = L.layerGroup().addTo(map);
@@ -640,7 +643,6 @@
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
 
-            // Calculations for localized 300km box masking area properties surrounding the dome structure
             var deltaOffset = 1.35; 
             var southernLatitude = lat - deltaOffset;
             var northernLatitude = lat + deltaOffset;
@@ -652,12 +654,12 @@
                 [northernLatitude, easternLongitude]
             );
 
-            singleSiteRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${currentActiveGlobalPath}/256/{z}/{x}/{y}/2/1_1.png`, {
+            singleSiteRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${currentActiveGlobalPath}/256/{z}/{x}/{y}/2/1_1.png?cb=${Date.now()}`, {
                 opacity: 0.85,
                 pane: 'radarPane',
                 bounds: filterClippingBounds, 
                 maxZoom: 18,
-                cacheBuster: Date.now() 
+                noWrap: true 
             }).addTo(map);
 
             map.setView([lat, lon], 6); 
@@ -743,8 +745,12 @@
             panel.classList.toggle('expanded');
         }
 
+        if (window.initRainViewerRadar) {
+            // Check visibility checks
+        }
+
         function initRainViewerRadar() {
-            fetch("https://api.rainviewer.com/public/weather-maps.json")
+            fetch("https://api.rainviewer.com/public/weather-maps.json?t=" + Date.now())
                 .then(res => res.json())
                 .then(metadata => {
                     const displayFrames = metadata.radar.past.slice(-5); 
