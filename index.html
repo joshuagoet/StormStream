@@ -217,7 +217,7 @@
             border-radius: 8px;
             padding: 12px 14px;
             color: #ffffff;
-            width: 290px;
+            width: 280px;
             font-family: Arial, sans-serif;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             position: relative;
@@ -334,7 +334,7 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(28, 38, 59, 0.65); 
             z-index: 2000000 !important; 
             display: none;
             align-items: center;
@@ -342,25 +342,25 @@
             pointer-events: auto !important;
         }
         #raw-text-modal-window {
-            background: #0d0e12;
-            border: 2px solid #00d4ff;
-            border-radius: 8px;
-            width: 580px;
-            max-width: 94vw;
-            max-height: 82vh;
+            background: #1c263b; 
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 4px;
+            width: 680px;
+            max-width: 96vw;
+            max-height: 88vh;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 12px 50px rgba(0,0,0,0.85);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.5);
             pointer-events: auto !important;
         }
         .modal-header-bar {
             padding: 14px 18px;
-            background: #14161f;
-            border-bottom: 1px solid #1e2230;
+            background: #161c2d;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            color: #00d4ff;
+            color: #ffffff;
             font-weight: bold;
             font-size: 13px;
             text-transform: uppercase;
@@ -369,7 +369,7 @@
         .modal-close-btn {
             background: transparent;
             border: none;
-            color: #777;
+            color: #888;
             font-size: 22px;
             cursor: pointer;
             line-height: 1;
@@ -377,15 +377,20 @@
         .modal-close-btn:hover { color: #fff; }
         
         .modal-body-content {
-            padding: 20px;
+            padding: 24px;
             overflow-y: auto;
             color: #ffffff; 
             font-family: 'Courier New', Courier, monospace;
-            font-size: 12.5px;
-            line-height: 1.5;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.55;
             white-space: pre-wrap;
-            background: #050608;
-            letter-spacing: 0.2px;
+            background: #1c263b; 
+            letter-spacing: 0.3px;
+            font-smooth: never !important;
+            -webkit-font-smoothing: none !important;
+            -moz-osx-font-smoothing: unset !important;
+            text-rendering: optimizeSpeed !important;
         }
 
         .leaflet-popup {
@@ -716,7 +721,7 @@
             { id: "vaaf", lat: 36.50, lon: -76.50, name: "Norfolk, VA" },
             { id: "vbg", lat: 34.73, lon: -120.58, name: "Vandenberg AFB, CA" },
             { id: "vnx", lat: 36.74, lon: -98.13, name: "Vance AFB, OK" },
-            { id: "vsk", lat: 43.10, lon: -76.22, name: "Syracuse North, NY" },
+            { id: "vsk", timetag: "2026", lat: 43.10, lon: -76.22, name: "Syracuse North, NY" },
             { id: "vax", lat: 30.78, lon: -83.19, name: "Moody AFB, GA" },
             { id: "wst", lat: 40.12, lon: -74.15, name: "Belmar, NJ" },
             { id: "wtc", lat: 35.41, lon: -97.74, name: "Will Rogers, OK" },
@@ -742,6 +747,9 @@
             map.createPane('singleSitePane');
             map.getPane('singleSitePane').style.zIndex = 400;
             map.getPane('singleSitePane').className += ' radar-broadcast-pane';
+
+            map.createPane('alertsPane');
+            map.getPane('alertsPane').style.zIndex = 500;
 
             map.createPane('labelsPane');
             map.getPane('labelsPane').style.zIndex = 600;
@@ -877,7 +885,8 @@
 
             var targetTilePath = currentActiveGlobalPath ? currentActiveGlobalPath : "/v2/radar/nowcast";
 
-            singleSiteRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${targetTilePath}/256/{z}/{x}/{y}/2/1_1.png?cb=${Date.now()}`, {
+            // FIXED ROUTE: Appended ?cb=${Date.now()} timestamp query to force complete tile un-caching loop updates instantly
+            singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + `/256/{z}/{x}/{y}/2/1_1.png?cb=${Date.now()}`, {
                 opacity: 0.85,
                 pane: 'singleSitePane',
                 bounds: compositeSafeBoundingArea, 
@@ -947,15 +956,18 @@
 
                 let strokeColor = "#a855f7"; let strokeWeight = 2.0; let fillAlpha = 0.10; 
                 let popupThemeClass = "";
-                let isFloodWarning = eventUpper.includes("FLOOD");
+                
+                let isFloodWarning = eventUpper.includes("FLOOD") && !eventUpper.includes("FLASH");
+                let isFlashFloodWarning = eventUpper.includes("FLASH FLOOD");
+                let isTornadoWarning = eventUpper.includes("TORNADO");
 
-                if (eventUpper.includes("TORNADO")) {
+                if (isTornadoWarning) {
                     strokeColor = "#FF0000"; strokeWeight = 4.0; fillAlpha = 0.25;
                     popupThemeClass = "tornado-warning-popup";
                 } else if (eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM")) {
                     strokeColor = "#FFAA00"; strokeWeight = 2.5; fillAlpha = 0.15;
                     popupThemeClass = "severe-thunderstorm-popup";
-                } else if (isFloodWarning) {
+                } else if (isFloodWarning || isFlashFloodWarning) {
                     strokeColor = "#00FF00"; strokeWeight = 2.5; fillAlpha = 0.15;
                     popupThemeClass = "flood-warning-popup";
                 }
@@ -982,10 +994,16 @@
                 if (extractedHazardText.includes("IMPACT...")) extractedHazardText = extractedHazardText.split("IMPACT...")[0].trim();
                 if (extractedSourceText.includes("IMPACT...")) extractedSourceText = extractedSourceText.split("IMPACT...")[0].trim();
 
-                const riskThreat = eventUpper.includes("TORNADO") ? "Extreme" : "Considerable";
-                const tornadoTag = eventUpper.includes("TORNADO") ? "Observed" : "Possible";
+                var riskThreat = "Considerable";
+                var threatMatchPattern = /DAMAGE THREAT\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
+                if (threatMatchPattern && threatMatchPattern[1]) {
+                    riskThreat = threatMatchPattern[1].split('$$')[0].split('&&')[0].trim();
+                } else if (isTornadoWarning) {
+                    riskThreat = "Extreme";
+                }
                 
-                // CRITICAL DYNAMIC DURATION CALCULATION STRIP
+                var riskThreatUpper = riskThreat.toUpperCase();
+
                 var timeRemainingLabel = "Active Alert";
                 if (properties.ends) {
                     var endTimestamp = new Date(properties.ends).getTime();
@@ -997,64 +1015,56 @@
                     }
                 }
 
-                var wmoHeaderToken = properties.wmoIdentifier || "WUUS53 KLSX " + new Date().getDate() + "2349";
-                var easIdToken = properties.id ? properties.id.split('.').pop().toUpperCase() : "SVRLSX";
-                var trackingMatrixCode = properties.geocode && properties.geocode.UGC ? properties.geocode.UGC[0] + "-120030-" : "MOC019-027-120030-";
-                var instructionsBlock = properties.instruction || "Seek interior shelters inside substantial frames instantly.";
-
-                const compiledRawTextReport = `
-742 
-${wmoHeaderToken}
-${easIdToken}
-${trackingMatrixCode}
-/O.NEW.KLSX.SV.W.0178.${new Date().getFullYear()}0611T2349Z-260612T0030Z/
-
-BULLETIN - IMMEDIATE BROADCAST REQUESTED
-${eventName}
-National Weather Service Weather Enterprise Feed
-Live Text Station Product Output File
-
-The National Weather Service has issued a
-
-* ${eventName} for...
-  ${parsedSectors}
-
-* Until tracking loop dissolution phase expiration thresholds approach.
-
-* METEOROLOGICAL NARRATIVE SUMMARY:
-  ${coreAdvisoryNarrative}
-
-* CRITICAL THREAT MATRIX ATTRIBUTES:
-  HAZARD...${extractedHazardText}
-  SOURCE...${extractedSourceText}
-
-* PRECAUTIONARY/PREPAREDNESS ACTIONS...
-  ${instructionsBlock}
-
-&&
-
-LAT...LON AREA POLYS CAPTURED ON INTERCEPT GRAPH
-HAIL THREAT...${properties.hailThreat || 'RADAR INDICATED'}
-MAX HAIL SIZE...${properties.maxHailSize || 'N/A'}
-WIND THREAT...${properties.windThreat || 'RADAR INDICATED'}
-MAX WIND GUST...${properties.maxWindGust || 'N/A'}
-
-$$
-
-NWS Meteorological Operations Center Broadcast Loop
-                `.trim();
-
                 activeNwsTextMapCache[alertId] = {
                     title: eventName,
-                    text: compiledRawTextReport
+                    text: coreAdvisoryNarrative.trim()
                 };
 
-                // COMPANION FILTER INJECTION ENGINE FOR FLOOD WARNING STRUCTS
                 let popupInnerTemplateMarkup = "";
+                
                 if (isFloodWarning) {
                     popupInnerTemplateMarkup = `
                         <div class="nws-pill-row" style="margin-top: 6px; margin-bottom: 0px;">
                             <b>Counties</b>${parsedSectors}
+                        </div>
+                    `;
+                } else if (isFlashFloodWarning) {
+                    let showThreatBlocks = (riskThreatUpper.includes("CONSIDERABLE") || riskThreatUpper.includes("CATASTROPHIC") || riskThreatUpper.includes("EXTREME"));
+                    
+                    if (showThreatBlocks) {
+                        popupInnerTemplateMarkup = `
+                            <div class="nws-pill-row">
+                                <b>Counties</b>${parsedSectors}
+                            </div>
+                            <div class="nws-grid-badges">
+                                <div class="nws-badge-block">
+                                    <span>Source</span>${extractedSourceText}
+                                </div>
+                                <div class="nws-badge-block">
+                                    <span>Damage Threat</span>${riskThreat}
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        popupInnerTemplateMarkup = `
+                            <div class="nws-pill-row" style="margin-top: 6px; margin-bottom: 0px;">
+                                <b>Counties</b>${parsedSectors}
+                            </div>
+                        `;
+                    }
+                } else if (isTornadoWarning) {
+                    var hailSizeValue = properties.maxHailSize || "Quarter (1.00\")";
+                    popupInnerTemplateMarkup = `
+                        <div class="nws-pill-row">
+                            <b>Counties</b>${parsedSectors}
+                        </div>
+                        <div class="nws-grid-badges">
+                            <div class="nws-badge-block">
+                                <span>Source</span>${extractedSourceText}
+                            </div>
+                            <div class="nws-badge-block">
+                                <span>Max Hail</span>${hailSizeValue}
+                            </div>
                         </div>
                     `;
                 } else {
@@ -1077,13 +1087,14 @@ NWS Meteorological Operations Center Broadcast Loop
                 }
 
                 L.geoJSON(feature, {
+                    pane: 'alertsPane',
                     style: { color: strokeColor, weight: strokeWeight, fillColor: strokeColor, fillOpacity: fillAlpha },
                     onEachFeature: function(f, layer) {
                         layer.bindPopup(`
                             <div class="nws-severe-popup ${popupThemeClass}">
                                 <div class="nws-header-container">
                                     <div class="nws-title-badge">${eventName}</div>
-                                    <button class="nws-info-trigger" onclick="launchNwsTextStatementModal('${alertId}')" title="View Full Text Statement">ⓘ</button>
+                                    <button class="nws-info-trigger" onclick="launchNwsTextStatementModal('${alertId}')" title="View Full Text Product">ⓘ</button>
                                 </div>
                                 <div class="nws-expiry-subtitle">${timeRemainingLabel}</div>
                                 <div class="nws-countdown-track">
