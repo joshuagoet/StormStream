@@ -48,7 +48,21 @@
             width: 290px;
             pointer-events: auto; 
         }
-
+        #coords-display { 
+            margin: 6px 0 0 0; 
+            font-size: 13px; 
+            font-weight: 900;
+            color: #ffffff; /* Solid white interior text fill */
+            
+            /* Sharp black outline border edges */
+            -webkit-text-stroke: 1px #000000; 
+            text-stroke: 1px #000000; 
+            
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: block;
+        }
+        
         .brand-container { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
         #hud-panel h1 { margin: 0; font-size: 15px; color: #ff0055; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 900; }
         #hud-panel p { margin: 2px 0 0 0; font-size: 12px; color: #aaa; }
@@ -196,16 +210,16 @@
 
     <div style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; pointer-events: none;">
         
-        <div id="hud-panel">
+<div id="hud-panel">
             <div class="brand-container">
                 <h1>StormStream</h1>
             </div>
-            <p id="coords-display"><b>Active Target:</b> Lincoln County, MO</p>
+            <div id="coords-display">Active Target: Lincoln County, MO</div>
             
             <div id="alert-banner">
-                <b>Forecast Highlights</b>
-                <div>Damaging Wind threat Saturday night</div>
-                <div>Growing flooding threat Saturday</div>
+                <b>📊 Forecast Highlights</b>
+                <div>• Pure HTTPS network streaming active.</div>
+                <div>• Global data ingestion systems online.</div>
             </div>
 
             <div class="radar-type-grid">
