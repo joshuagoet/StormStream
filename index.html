@@ -612,7 +612,6 @@
             }
         }
 
-        // MODERNIZED REAL-TIME RIDGE INTERCEPT ENGINE VIA IEM INFRASTRUCTURE
         function loadSingleSiteRadar() {
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); }
             
@@ -622,7 +621,7 @@
 
             var stationID = selectedOption.value.toUpperCase();
 
-            // Connects natively with active Level III Base Reflectivity matrices using sector variables
+            // INSTALLED CACHE-BUSTING PARAMS AND SWITCHED TO HD N0B LIVE ARRAYS
             singleSiteRadarLayer = L.tileLayer.wms("https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/ridge.cgi", {
                 layers: 'single',
                 format: 'image/png',
@@ -630,8 +629,9 @@
                 opacity: 0.85,
                 pane: 'radarPane',
                 sector: stationID,
-                prod: 'N0Q',
-                attribution: 'IEM RIDGE'
+                prod: 'N0B',
+                attribution: 'IEM RIDGE',
+                cacheBuster: Date.now() // Forces absolute bypass of browser cache history vectors
             }).addTo(map);
 
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
