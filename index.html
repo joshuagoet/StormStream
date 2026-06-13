@@ -31,13 +31,6 @@
             filter: saturate(2.5) contrast(1.3) brightness(1.1) !important;
         }
 
-        /* DYNAMIC MASK ENGINE: Creates the smooth feathered vignette fade at the radar perimeter */
-        .feathered-radar-mask {
-            mask-image: radial-gradient(circle, rgba(0,0,0,1) 76%, rgba(0,0,0,0.4) 88%, rgba(0,0,0,0) 96%);
-            -webkit-mask-image: radial-gradient(circle, rgba(0,0,0,1) 76%, rgba(0,0,0,0.4) 88%, rgba(0,0,0,0) 96%);
-            transform-origin: center;
-        }
-
         #hud-panel { 
             position: fixed; 
             z-index: 99999 !important; 
@@ -543,7 +536,7 @@
 
             map.createPane('singleSitePane');
             map.getPane('singleSitePane').style.zIndex = 400;
-            map.getPane('singleSitePane').className += ' radar-broadcast-pane feathered-radar-mask';
+            map.getPane('singleSitePane').className += ' radar-broadcast-pane';
 
             map.createPane('labelsPane');
             map.getPane('labelsPane').style.zIndex = 600;
@@ -577,7 +570,6 @@
             initRainViewerRadar();
             loadWeatherAlertPipeline();
 
-            // Run dynamic pixel recalibration loop on view changes to recalculate gradient scale positioning
             map.on('zoomend move moveend', recalibratePerimeterGradientMask);
 
             document.addEventListener("visibilitychange", function() {
@@ -638,6 +630,9 @@
                 document.getElementById('radar-us-btn').classList.add('active');
                 map.getPane('usMosaicPane').style.display = 'block';
                 map.getPane('singleSitePane').style.display = 'none';
+                // Remove visual mask on national view exit tracking loops
+                map.getPane('singleSitePane').style.maskImage = 'none';
+                map.getPane('singleSitePane').style.webkitMaskImage = 'none';
                 if(radarLayers.length > 0) radarLayers[currentRadarIndex].setOpacity(0.85);
             } else {
                 document.getElementById('radar-site-btn').classList.add('active');
@@ -660,7 +655,7 @@
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
 
-            // WeatherWise / Weatherfront solid perimeter border tracker ring
+            // WeatherWise / Weatherfront solid perimeter border ring element
             singleSiteBorderCircle = L.circle([lat, lon], {
                 radius: 250000, 
                 color: '#1a1b21',
@@ -669,44 +664,47 @@
                 pointerEvents: 'none'
             }).addTo(map);
 
-            // SILENCED TUNNEL: Removed all hard geographical box clipping bounds to prevent Leaflet zoom errors completely
+            // STABILIZED CORE LAYER: Standard dynamic timeline tiles with native zoom clamps to suppress warning bars completely
             singleSiteRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${currentActiveGlobalPath}/256/{z}/{x}/{y}/2/1_1.png?cb=${Date.now()}`, {
                 opacity: 0.85,
                 pane: 'singleSitePane', 
-                maxNativeZoom: 10, 
+                maxNativeZoom: 7, 
                 maxZoom: 18
             }).addTo(map);
 
             map.setView([lat, lon], 6); 
             document.getElementById('coords-display').innerHTML = "Active Target: " + selectedOption.text.split(' (')[0];
             
-            // Re-trigger gradient positions instantly on initial layer spawn
             setTimeout(recalibratePerimeterGradientMask, 50);
-        }
-
-        // SMOOTH RADIAL VIGNETTE recalibration script engine
-        function recalibratePerimeterGradientMask() {
-            if (currentRadarMode !== 'single' || !singleSiteBorderCircle) return;
-
-            // Transfigure geographical coordinate center into absolute pixel space
-            var centerPointCoordinates = map.latLngToContainerPoint(singleSiteBorderCircle.getLatLng());
-            
-            // Measure horizontal boundary coordinate offset to calculate live circular radius scale factors in real-time pixels
-            var outerEdgeCoordinates = map.latLngToContainerPoint(L.GeometryUtil.destination(singleSiteBorderCircle.getLatLng(), 90, 250000));
-            var liveRadiusPixels = Math.abs(outerEdgeCoordinates.x - centerPointCoordinates.x);
-
-            // Injects CSS procedural hardware filter strings directly into Leaflet's single-site sub-container
-            var paneElement = map.getPane('singleSitePane');
-            if (paneElement) {
-                var gradientMaskString = `radial-gradient(circle ${liveRadiusPixels}px at ${centerPointCoordinates.x}px ${centerPointCoordinates.y}px, rgba(0,0,0,1) 82%, rgba(0,0,0,0.3) 94%, rgba(0,0,0,0) 100%)`;
-                paneElement.style.maskImage = gradientMaskString;
-                paneElement.style.webkitMaskImage = gradientMaskString;
-            }
         }
 
         function executeStationChangeToggle() {
             if (currentRadarMode === 'single') {
                 loadSingleSiteRadar();
+            }
+        }
+
+        // UPGRADED VIGNETTE CONVERSION ENGINE: Bypasses faulty external Geometry plugins natively
+        function recalibratePerimeterGradientMask() {
+            if (currentRadarMode !== 'single' || !singleSiteBorderCircle || !map) return;
+
+            // Transfigure geographical coordinate center into absolute container pixel space
+            var centerPointCoordinates = map.latLngToContainerPoint(singleSiteBorderCircle.getLatLng());
+            
+            // Native distance matrix loop tracker: Finds a target boundary point exactly 250km east of the dome tower coordinates
+            var initialLatLng = singleSiteBorderCircle.getLatLng();
+            var offsetLongitudeBound = initialLatLng.lng + (250000 / (111320 * Math.cos(initialLatLng.lat * Math.PI / 180)));
+            
+            var boundaryLatLng = L.latLng(initialLatLng.lat, offsetLongitudeBound);
+            var outerEdgeCoordinates = map.latLngToContainerPoint(boundaryLatLng);
+            
+            var liveRadiusPixels = Math.abs(outerEdgeCoordinates.x - centerPointCoordinates.x);
+
+            var paneElement = map.getPane('singleSitePane');
+            if (paneElement) {
+                var gradientMaskString = `radial-gradient(circle ${liveRadiusPixels}px at ${centerPointCoordinates.x}px ${centerPointCoordinates.y}px, rgba(0,0,0,1) 78%, rgba(0,0,0,0.3) 92%, rgba(0,0,0,0) 100%)`;
+                paneElement.style.maskImage = gradientMaskString;
+                paneElement.style.webkitMaskImage = gradientMaskString;
             }
         }
 
