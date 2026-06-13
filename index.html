@@ -1,1 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StormStream - Active Threat Operations Center</title>    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <style>
+        html, body { 
+            margin: 0; 
+            padding: 0; 
+            width: 100%; 
+            height: 100%; 
+            overflow: hidden; 
+            font-family: Arial, sans-serif; 
+            background-color: #95989b; 
+        }
+        
+        #map { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100vw; 
+            height: 100vh; 
+            z-index: 1; 
+            background: #95989b; 
+        }
 
+        /* Forces a muted tactical gray background layout while keeping lines/highways visible */
+        .tile-broadcast-pane {
+            filter: hue-rotate(185deg) invert(1) saturate(0.0) brightness(0.60) contrast(1.15) !important;
+        }
+
+        /* Protects radar reflectivity saturation levels from being washed out by the gray basemap filters */
+        .radar-broadcast-pane {
+            filter: saturate(2.5) contrast(1.3) brightness(1.1) !important;
+        }
+
+        #hud-panel { 
+            position: fixed; 
+            z-index: 99999 !important; 
+            top: 50px; 
+            left: 20px; 
+            background: rgba(15, 16, 20, 0.96); 
+            padding: 14px 18px; 
+            border-radius: 6px; 
+            border: 2px solid #ff0055; 
+            color: #fff; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4); 
+            width: 290px;
+            pointer-events: auto; 
+        }
+
+        .brand-container { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        #hud-panel h1 { margin: 0; font-size: 15px; color: #ff0055; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 900; }
+        #hud-panel p { margin: 2px 0 0 0; font-size: 12px; color: #aaa; }
+        
+        #alert-banner { 
+            background: rgba(30, 41, 59, 0.4); 
+            border: 1px solid #00d4ff; 
+            border-radius: 4px; 
+            padding: 10px 12px; 
+            margin-top: 10px; 
+            color: #e2e8f0; 
+            font-size: 11.5px; 
+            line-height: 1.5; 
+        }
+        #alert-banner b { color: #00d4ff; text-transform: uppercase; display: block; margin-bottom: 4px; font-size: 11px; }
+
+        #threat-center-wrapper {
+            position: absolute;
+            top: 50px;
+            right: 20px;
+            z-index: 100000;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            pointer-events: none;
+        }
+
+        #hazard-hub-trigger {
+            background: linear-gradient(135deg, #ff7700 0%, #cc4400 100%);
+            border: 2px solid #ffaa00;
+            border-radius: 50%;
+            width: 54px;
+            height: 54px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            pointer-events: auto;
+            position: relative;
+        }
+
+        .alert-counter-badge {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            background: #ef4444;
+            color: #ffffff;
+            border: 1.5px solid #ffffff;
+            font-family: monospace;
+            font-size: 10px;
+            font-weight: bold;
+            border-radius: 10px;
+            padding: 2px 6px;
+        }
+
+        #text-advisory-panel {
+            margin-top: 10px;
+            background: rgba(15, 16, 20, 0.96); 
+            border: 2px solid #3a3b45;
+            border-radius: 6px;
+            padding: 14px 16px;
+            width: 360px; 
+            max-height: 65vh; 
+            overflow-y: auto; 
+            pointer-events: auto;
+            color: #fff;
+            display: none; 
+        }
+
+        #text-advisory-panel.expanded { display: block; }
+        #text-advisory-panel h2 { margin: 0 0 8px 0; font-size: 13px; color: #ffbb00; text-transform: uppercase; }
+        
+        .filter-matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            margin-bottom: 12px;
+            background: #111217;
+            padding: 6px;
+            border-radius: 4px;
+        }
+        .matrix-toggle-btn {
+            background: #1f2026;
+            border: 1px solid #3a3b45;
+            color: #fff;
+            font-size: 9px;
+            font-family: monospace;
+            padding: 5px 2px;
+            border-radius: 3px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .bulletin-item { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #22232a; font-size: 11px; }
+        .bulletin-text { color: #aaa; margin-top: 4px; font-family: monospace; font-size: 10.5px; }
+        .bulletin-time { color: #777; font-size: 9px; }
+
+        #dbz-legend {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw; 
+            z-index: 99999;
+            background: rgba(10, 11, 15, 0.95);
+            border-bottom: 2px solid #2a2c35;
+            padding: 6px 0 4px 0; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .gradient-bar {
+            width: 100vw; 
+            height: 14px; 
+            background: linear-gradient(to right,
+                #00d4ff 0%, #00cbff 5%, #00b0ff 10%, #001ab8 15%,
+                #00ff00 16%, #00d500 25%, #00ab00 30%, #006400 35%,
+                #ffff00 36%, #ffcb00 42%, #ffa500 46%, #ff6600 50%,
+                #ff0000 51%, #cd0000 56%, #c90078 61%, #f000ff 64%, #dcbadc 70%,
+                #ebebeb 97%, #ffffff 100%
+            );
+        }
+
+        .search-container { display: flex; gap: 6px; margin-top: 10px; }
+        #city-search-input { background: #1f2026; border: 1px solid #3a3b45; color: #fff; padding: 6px 10px; border-radius: 4px; font-size: 12px; width: 100%; }
+        #search-btn { background: #ff0055; border: none; color: #fff; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        
+        #playback-bar { margin-top: 12px; display: flex; align-items: center; justify-content: space-between; background: #15161c; padding: 6px 10px; border-radius: 4px; }
+        #play-btn { background: #22c55e; border: none; color: white; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; }
+        #time-display { font-size: 11px; font-family: monospace; color: #22c55e; font-weight: bold; }
+
+        .leaflet-control-zoom { margin-top: 320px !important; margin-left: 20px !important; }
+
+        /* NWS ALERT INTERACTIVE HUD CARDS */
+        .broadcast-popup-frame { background: #7d820a; border-radius: 8px; padding: 14px; color: #ffffff; width: 260px; font-family: sans-serif; }
+        .broadcast-popup-frame.tornado-warn { background: #9a1f1f; }
+        .broadcast-popup-frame.flash-flood-warn { background: #1b5e20; }
+        .popup-header { font-size: 14px; font-weight: 900; text-transform: uppercase; }
+        .popup-expiration { font-size: 11px; opacity: 0.9; text-transform: uppercase; margin-bottom: 8px; }
+        .popup-meta-row { background: rgba(0, 0, 0, 0.15); border-radius: 4px; padding: 8px; margin-bottom: 6px; font-size: 11px; }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <div style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; pointer-events: none;">
+        
+        <div id="hud-panel">
+            <div class="brand-container">
+                <h1>StormStream</h1>
+            </div>
+            <p id="coords-display"><b>Active Target:</b> Lincoln County, MO</p>
+            
+            <div id="alert-banner">
+                <b>📊 Forecast Highlights</b>
+                <div>• Radar reflectivity track loop fully synchronized.</div>
+                <div>• Convective warning geometry parsing active.</div>
+            </div>
+
+            <div class="search-container">
+                <input type="text" id="city-search-input" value="Lincoln County, MO">
+                <button id="search-btn" onclick="executeLocalTargetReset()">Go</button>
+            </div>
+            <div id="playback-bar">
+                <button id="play-btn" onclick="togglePlayback()">PAUSE</button>
+                <div id="time-display">TIME: --:--</div>
+            </div>
+        </div>
+
+        <div id="threat-center-wrapper">
+            <div id="hazard-hub-trigger" onclick="toggleAdvisoryWidgetPanel()">
+                <span style="color:#fff; font-size:20px; font-weight:bold;">⚠️</span>
+                <div id="badge-counter-element" class="alert-counter-badge">--</div>
+            </div>
+
+            <div id="text-advisory-panel">
+                <h2>Live NWS Alerts Feed</h2>
+                <div class="filter-matrix-grid">
+                    <button class="matrix-toggle-btn">Alert Filters Active</button>
+                </div>
+                <div id="bulletin-feed-container"></div>
+            </div>
+        </div>
+
+        <div id="dbz-legend">
+            <div style="width: 100vw;">
+                <div class="gradient-bar"></div>
+                <div style="display: flex; justify-content: space-between; width: 100%; box-sizing: border-box; padding: 4px 15px; font-family: monospace; font-size: 10px; font-weight: bold; color: #aaa;">
+                    <div>0 dBZ</div>
+                    <div>35 dBZ (Rain)</div>
+                    <div>55 dBZ (Hail Core)</div>
+                    <div>75 dBZ</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+ <script>
+        var map;
+        var playbackActive = true;
+
+        var radarLayers = [];
+        var currentRadarIndex = 0;
+        var polygonAlertGroup;
+
+        var centerLat = 38.6270; // Centers directly on the St. Louis metro impact sector
+        var centerLng = -90.1994;
+
+        // INLINE EMERGENCY DATA BUFFER: Official NWS Warning Polygon Meshes for the Storm Line
+        var masterAlertFeatures = [
+        ];
+
+        window.onload = function() {
+            // Map initializes with physical + and - buttons permanently hidden
+            map = L.map('map', {
+                center: [centerLat, centerLng],
+                zoom: 6, 
+                zoomControl: false 
+            });
+
+            map.createPane('tilePane');
+            map.getPane('tilePane').style.zIndex = 200;
+            map.getPane('tilePane').className += ' tile-broadcast-pane';
+
+            map.createPane('radarPane');
+            map.getPane('radarPane').style.zIndex = 400;
+            map.getPane('radarPane').className += ' radar-broadcast-pane';
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                pane: 'tilePane',
+                attribution: '&copy; OpenStreetMap &copy; CARTO'
+            }).addTo(map);
+
+            polygonAlertGroup = L.layerGroup().addTo(map);
+
+            initRainViewerRadar();
+
+            // KICKSTARTS TRUSTED SCRIPT INJECTION RETRIEVAL
+            executeTrustedScriptPipeline();
+            
+            // Re-runs the injection pipeline every 15 seconds to stream live nationwide updates
+            setInterval(executeTrustedScriptPipeline, 15000);
+            setInterval(updateClockDisplay, 1000);
+        };
+
+        // Bypasses local browser blocks by injecting a trusted data element directly into the document structure
+        function executeTrustedScriptPipeline() {
+            const cb = new Date().getTime();
+            const oldScript = document.getElementById('nws-injection-node');
+            if (oldScript) oldScript.remove(); // Safely unloads previous script nodes to prevent memory clutter
+
+            const targetUrl = `https://api.weather.gov/alerts/active?status=actual&_cb=${cb}`;
+            const proxiedUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}&callback=processTrustedWeatherFeed`;
+
+            const scriptNode = document.createElement('script');
+            scriptNode.id = 'nws-injection-node';
+            scriptNode.src = proxiedUrl;
+            document.head.appendChild(scriptNode);
+        }
+
+        // GLOBAL CALLBACK FUNCTION: Receives the data stream seamlessly bypassing the CORS lock!
+        window.processTrustedWeatherFeed = function(wrapper) {
+            try {
+                if (!wrapper || !wrapper.contents) return;
+                const data = JSON.parse(wrapper.contents);
+                
+                if (data && data.features) {
+                    masterAlertFeatures = data.features;
+                    instantAlertCount = masterAlertFeatures.length;
+                    
+                    // Awakens the orange dashboard counter instantly
+                    document.getElementById('badge-counter-element').innerText = instantAlertCount;
+                    
+                    // Populates text feeds and draws alert geometry natively
+                    renderFilteredAlerts();
+                    plotWarningPolygonsOnMap();
+                }
+            } catch(e) {
+                console.error("Operational pipeline error parsing incoming telemetry stream.", e);
+            }
+        };
+
+        function plotWarningPolygonsOnMap() {
+            polygonAlertGroup.clearLayers();
+
+            masterAlertFeatures.forEach(feature => {
+                if (!feature.geometry || !feature.geometry.coordinates) return;
+
+                const properties = feature.properties || {};
+                const eventName = properties.event || "Weather Event";
+                const eventUpper = eventName.toUpperCase();
+
+                if (eventUpper.includes("WATCH")) return; // Excludes broad watch boxes to prevent map clutter
+
+                let strokeColor = "#FFAA00"; let strokeWeight = 1.5; let fillAlpha = 0.08; let themeClass = ""; 
+
+                if (eventUpper.includes("TORNADO") && eventUpper.includes("WARNING")) {
+                    strokeColor = "#FF0000"; strokeWeight = 3.5; fillAlpha = 0.22; themeClass = "tornado-warn";
+                } else if (eventUpper.includes("SEVERE") && eventUpper.includes("WARNING")) {
+                    strokeColor = "#FF0055"; strokeWeight = 2.5; fillAlpha = 0.16;
+                } else if (eventUpper.includes("FLASH FLOOD")) {
+                    strokeColor = "#00FF00"; strokeWeight = 2.5; fillAlpha = 0.16; themeClass = "flash-flood-warn";
+                }
+
+                // Leaflet Native Translator handles backwards coordinates and builds interactive HUD boxes
+                L.geoJSON(feature, {
+                    style: { color: strokeColor, weight: strokeWeight, fillColor: strokeColor, fillOpacity: fillAlpha },
+                    onEachFeature: function(f, layer) {
+                        layer.bindPopup(`
+                            <div class="broadcast-popup-frame ${themeClass}">
+                                <div class="popup-header">${eventName}</div>
+                                <div class="popup-meta-row"><b>Sectors Impacted</b>${properties.areaDesc || "Regional Sector"}</div>
+                            </div>
+                        `, { maxWidth: 280 });
+                    }
+                }).addTo(polygonAlertGroup);
+            });
+        }
+
+        function renderFilteredAlerts() {
+            const feedContainer = document.getElementById('bulletin-feed-container');
+            if (!feedContainer) return;
+            feedContainer.innerHTML = "";
+
+            let renderedCount = 0;
+            for (let i = 0; i < masterAlertFeatures.length; i++) {
+                if (renderedCount >= 15) break;
+
+                const alertProps = masterAlertFeatures[i].properties;
+                if (!alertProps) continue;
+                
+                const eventName = alertProps.event || "Hazard Alert";
+                renderedCount++;
+
+                const areaDesc = alertProps.areaDesc || "Regional Sector";
+                const instruction = alertProps.instruction || alertProps.description || "Monitor storm lines continuously.";
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'bulletin-item';
+                itemDiv.innerHTML = `
+                    <b style="color: #ff0055;">⚠️ ${eventName}</b>
+                    <div style="font-size: 10px; color: #fff; font-weight: bold;">Sector: ${areaDesc}</div>
+                    <div class="bulletin-text">${instruction.substring(0, 140)}...</div>
+                `;
+                feedContainer.appendChild(itemDiv);
+            }
+        }
+
+        function togglePlayback() {
+            playbackActive = !playbackActive;
+            document.getElementById('play-btn').innerText = playbackActive ? "PAUSE" : "RESUME";
+        }
+
+        function initRainViewerRadar() {
+            fetch("https://api.rainviewer.com/public/weather-maps.json")
+                .then(res => res.json())
+                .then(metadata => {
+                    const displayFrames = metadata.radar.past.slice(-5); 
+                    displayFrames.forEach((frame) => {
+                        const radarLayer = L.tileLayer(`https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, {
+                            opacity: 0.0, 
+                            maxNativeZoom: 7,   
+                            maxZoom: 18,        
+                            pane: 'radarPane'
+                        });
+                        radarLayer.addTo(map);
+                        radarLayers.push(radarLayer);
+                    });
+                    if(radarLayers.length > 0) {
+                        radarLayers[0].setOpacity(0.85); 
+                        setInterval(animateRadarFrames, 1200); 
+                    }
+                }).catch(err => console.error(err));
+        }
+
+        function animateRadarFrames() {
+            if (!playbackActive || radarLayers.length === 0) return;
+            radarLayers[currentRadarIndex].setOpacity(0.0);
+            currentRadarIndex = (currentRadarIndex + 1) % radarLayers.length;
+            radarLayers[currentRadarIndex].setOpacity(0.85);
+        }
+
+        function updateClockDisplay() {
+            var now = new Date();
+            document.getElementById('time-display').innerText = "TIME: " + 
+                String(now.getHours()).padStart(2, '0') + ":" + 
+                String(now.getMinutes()).padStart(2, '0') + ":" + 
+                String(now.getSeconds()).padStart(2, '0');
+        }
+
+        function executeLocalTargetReset() {
+            var locationInput = document.getElementById('city-search-input').value.trim();
+            if(locationInput === "") return;
+
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=us&limit=1&q=${encodeURIComponent(locationInput)}`, { headers: { 'User-Agent': 'StormStream/1.0' } })
+                .then(res => res.json())
+                .then(resData => {
+                    if(resData && resData.length > 0) {
+                        map.setView([parseFloat(resData[0].lat), parseFloat(resData[0].lon)], 8);
+                        document.getElementById('coords-display').innerHTML = "<b>Active Target:</b> " + resData[0].display_name.split(',')[0] + ", " + resData[0].display_name.split(',')[1];
+                    }
+                }).catch(() => {});
+        }   
+    </script>
+</body>
+</html>
