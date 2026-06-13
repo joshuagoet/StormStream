@@ -235,7 +235,7 @@
             
             <div id="alert-banner">
                 <b>📊 Radar Configuration</b>
-                <div>• Complete 150+ NWS NEXRAD registry loaded.</div>
+                <div>• Verified Level-III N0R stream enabled.</div>
                 <div>• Local weather telemetry array operational.</div>
             </div>
 
@@ -244,11 +244,9 @@
                 <button id="radar-site-btn" class="radar-select-btn" onclick="switchRadarMode('single')">Single-Site</button>
             </div>
 
-            <!-- HYPER-SCALE NEXRAD HARDWARE ENGINERING dropdown -->
             <div id="station-toggle-box" class="station-selector-wrapper">
                 <select id="radar-station-dropdown" onchange="executeStationChangeToggle()">
-                    <!-- Dropdown is dynamically assembled by compiling function on initial initialization -->
-                </select>
+                    </select>
             </div>
 
             <div class="search-container">
@@ -304,7 +302,6 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        // RAW SYSTEM REGISTRY - EVERY OPERATIONAL SINGLE-SITE NEXRAD RADAR IN THE UNITED STATES
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -537,9 +534,7 @@
 
             polygonAlertGroup = L.layerGroup().addTo(map);
 
-            // INITIALIZE COMPREHENSIVE HARDWARE REGISTRY BUILDER
             assembleCompleteNEXRADMenu();
-
             initRainViewerRadar();
             loadWeatherAlertPipeline();
 
@@ -553,13 +548,11 @@
             });
         };
 
-        // PIPELINE UTILITY FOR MASS REGISTRY RECONSTRUCTION
         function assembleCompleteNEXRADMenu() {
             const dropdown = document.getElementById('radar-station-dropdown');
             if (!dropdown) return;
-            dropdown.innerHTML = ""; // Wipe default loaders
+            dropdown.innerHTML = ""; 
 
-            // Sort alphabetical arrays strictly by city metadata properties
             fullUSRadarDictionary.sort((a, b) => a.name.localeCompare(b.name));
 
             fullUSRadarDictionary.forEach(station => {
@@ -619,9 +612,9 @@
 
             var stationID = selectedOption.value;
 
-            // Direct WMS layer routing over the explicit IEM backend arrays
-            singleSiteRadarLayer = L.tileLayer.wms("https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q.cgi", {
-                layers: `single-${stationID}-n0q`,
+            // CORRECTED N0R LAYER PIPELINE HOOK
+            singleSiteRadarLayer = L.tileLayer.wms("https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r.cgi", {
+                layers: `nexrad-${stationID}-n0r`,
                 format: 'image/png',
                 transparent: true,
                 opacity: 0.85,
