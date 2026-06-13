@@ -238,10 +238,10 @@
                 <div>.KEY MESSAGES...</div>
                 <div>- Thunderstorms are possible Saturday morning across portions of the</div>
                 <div>region. The severe weather threat with these is low.</div>
-                <div>                                                                    </div>
+                <div>                                                                     </div>
                 <div>- Additional thunderstorms are expected along a cold front Saturday</div>
                 <div>evening. These will have a greater threat for damaging winds.</div>
-                <div>                                                                    </div>
+                <div>                                                                     </div>
                 <div>- Below normal temperatures and dry conditions are expected Sunday</div>
                 <div>into early next week.</div>
             </div>
@@ -253,7 +253,7 @@
 
             <div id="station-toggle-box" class="station-selector-wrapper">
                 <select id="radar-station-dropdown" onchange="executeStationChangeToggle()">
-                    </select>
+                </select>
             </div>
 
             <div class="search-container">
@@ -522,7 +522,7 @@
         window.onload = function() {
             map = L.map('map', {
                 center: [centerLat, centerLng],
-                zoom: 18, 
+                zoom: 6, // CHANGED: Pull back macro view from street level 18 to regional scale 6
                 zoomControl: false 
             });
 
@@ -570,6 +570,9 @@
                 node.text = `${station.name} (K${station.id.toUpperCase()})`;
                 dropdown.appendChild(node);
             });
+            
+            // Auto-select St. Louis (lsx) inside dropdown menu to prevent mismatched null offsets
+            dropdown.value = "lsx";
         }
 
         function loadWeatherAlertPipeline() {
@@ -610,7 +613,6 @@
             }
         }
 
-        // REDIRECTED TO MULTI-RADAR EXPERIMENT MRMS SERVER ARRAY
         function loadSingleSiteRadar() {
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); }
             
@@ -620,18 +622,20 @@
 
             var stationID = selectedOption.value;
 
-            // Connects directly into the open, unrestricted NOAA Open Geospatial Network layer
-            singleSiteRadarLayer = L.tileLayer.wms("https://opengeo.ncep.noaa.gov/geoserver/mrms/mrms_bref_pass/ows", {
-                layers: 'mrms_bref_pass',
+            // CHANGED: Fixed pathing syntax to connect directly into the active Iowa reflectivity directory
+            singleSiteRadarLayer = L.tileLayer.wms("https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r.cgi", {
+                layers: `nexrad-${stationID}-n0r`,
                 format: 'image/png',
                 transparent: true,
-                opacity: 0.80,
+                opacity: 0.85,
                 pane: 'radarPane',
-                attribution: 'NOAA/NWS MRMS.'
+                attribution: 'IEM NEXRAD'
             }).addTo(map);
 
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
+            
+            // CHANGED: Reposition tracking focus camera outward to depth scale 8 to reveal storm cells clearly
             map.setView([lat, lon], 8);
 
             document.getElementById('coords-display').innerHTML = "Active Target: " + selectedOption.text.split(' (')[0];
