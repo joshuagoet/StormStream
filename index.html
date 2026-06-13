@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StormStream - Global Threat Operations Center</title>    
+    <title>StormStream - North American Threat Operations Center</title>    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <style>
         html, body { 
@@ -112,11 +112,12 @@
             background: #1a1b21;
             border: 1px solid #00d4ff;
             color: #fff;
-            padding: 5px 8px;
+            padding: 6px 8px;
             border-radius: 4px;
             font-size: 11px;
             font-weight: bold;
             outline: none;
+            max-height: 200px;
         }
 
         #threat-center-wrapper {
@@ -230,30 +231,23 @@
             <div class="brand-container">
                 <h1>StormStream</h1>
             </div>
-            <h2 id="coords-display">Active Target: GLOBAL MONITOR</h2>
+            <h2 id="coords-display">Active Target: Lincoln County, MO</h2>
             
             <div id="alert-banner">
-                <b>📊 Global Weather Tracking</b>
-                <div>• Connected to global multi-radar node indexes.</div>
-                <div>• Precision network streams deployed.</div>
+                <b>📊 Radar Configuration</b>
+                <div>• Auto-compiling US/Canada station index array.</div>
+                <div>• Local weather telemetry array operational.</div>
             </div>
 
             <div class="radar-type-grid">
-                <button id="radar-us-btn" class="radar-select-btn active" onclick="switchRadarMode('national')">Global Mosaic</button>
-                <button id="radar-site-btn" class="radar-select-btn" onclick="switchRadarMode('single')">Radar Nodes</button>
+                <button id="radar-us-btn" class="radar-select-btn active" onclick="switchRadarMode('national')">NA Composite</button>
+                <button id="radar-site-btn" class="radar-select-btn" onclick="switchRadarMode('single')">Single-Site</button>
             </div>
 
+            <!-- DIGITAL STATION MENU ASSEMBLY WRAPPER -->
             <div id="station-toggle-box" class="station-selector-wrapper">
                 <select id="radar-station-dropdown" onchange="executeStationChangeToggle()">
-                    <option value="US" data-lat="38.9" data-lon="-96.0" data-zoom="4">United States Grid</option>
-                    <option value="CA" data-lat="55.0" data-lon="-110.0" data-zoom="3">Canada Composite</option>
-                    <option value="DE" data-lat="51.1" data-lon="10.4" data-zoom="6">Germany (DWD)</option>
-                    <option value="FR" data-lat="46.2" data-lon="2.2" data-zoom="6">France (MeteoFR)</option>
-                    <option value="UK" data-lat="55.3" data-lon="-3.4" data-zoom="6">United Kingdom (MetOffice)</option>
-                    <option value="AU" data-lat="-25.2" data-lon="133.7" data-zoom="4">Australia Grid (BOM)</option>
-                    <option value="JP" data-lat="36.2" data-lon="138.2" data-zoom="5">Japan Composite (JMA)</option>
-                    <option value="BR" data-lat="-14.2" data-lon="-51.9" data-zoom="4">Brazil Tracker</option>
-                    <option value="ZA" data-lat="-30.5" data-lon="22.9" data-zoom="5">South Africa Sector</option>
+                    <option value="">Initializing Station Array...</option>
                 </select>
             </div>
 
@@ -274,7 +268,7 @@
             </div>
 
             <div id="text-advisory-panel">
-                <h2>Live NWS Alerts Feed (US)</h2>
+                <h2>Live NWS Alerts Feed</h2>
                 <div id="bulletin-feed-container"></div>
             </div>
         </div>
@@ -305,8 +299,8 @@
         var polygonAlertGroup;
         
         var currentRadarMode = 'national';
-        var globalNodeRadarLayer = null;
-        var currentRadarPath = "";
+        var singleSiteRadarLayer = null;
+        var masterGlobalRadarPath = "";
 
         var centerLat = 38.9742;
         var centerLng = -90.9664;
@@ -314,7 +308,7 @@
         window.onload = function() {
             map = L.map('map', {
                 center: [centerLat, centerLng],
-                zoom: 5, 
+                zoom: 6, 
                 zoomControl: false 
             });
 
@@ -335,6 +329,7 @@
 
             initRainViewerRadar();
             loadWeatherAlertPipeline();
+            compileNorthAmericanStationMatrix();
 
             setInterval(loadWeatherAlertPipeline, 30000);
             setInterval(updateClockDisplay, 1000);
@@ -365,13 +360,45 @@
                 .catch(err => console.error(err));
         }
 
+        // AUTOMATED NORTH AMERICAN STATION COMPILER PIPELINE
+        function compileNorthAmericanStationMatrix() {
+            fetch("https://api.rainviewer.com/public/weather-maps.json")
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.radar || !data.radar.individual) return;
+                    
+                    // Filter down to only US and Canada radar hardware arrays
+                    let naStations = data.radar.individual.filter(station => {
+                        return station.country_code === "US" || station.country_code === "CA";
+                    });
+
+                    // Sort stations alphabetically by name/region location
+                    naStations.sort((a, b) => a.name.localeCompare(b.name));
+
+                    const dropdown = document.getElementById('radar-station-dropdown');
+                    dropdown.innerHTML = ""; // Clear loader placeholder
+
+                    naStations.forEach(station => {
+                        let opt = document.createElement('option');
+                        opt.value = station.id;
+                        opt.setAttribute('data-lat', station.lat);
+                        opt.setAttribute('data-lon', station.lon);
+                        
+                        let tag = station.country_code === "US" ? "[US]" : "[CAN]";
+                        opt.text = `${tag} - ${station.name} (${station.id.toUpperCase()})`;
+                        dropdown.appendChild(opt);
+                    });
+                })
+                .catch(err => console.error("Station Compilation Anomaly:", err));
+        }
+
         function switchRadarMode(mode) {
             currentRadarMode = mode;
             document.getElementById('radar-us-btn').classList.remove('active');
             document.getElementById('radar-site-btn').classList.remove('active');
             document.getElementById('station-toggle-box').classList.remove('visible');
 
-            if(globalNodeRadarLayer) { map.removeLayer(globalNodeRadarLayer); globalNodeRadarLayer = null; }
+            if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); singleSiteRadarLayer = null; }
 
             if(mode === 'national') {
                 document.getElementById('radar-us-btn').classList.add('active');
@@ -380,37 +407,35 @@
                 document.getElementById('radar-site-btn').classList.add('active');
                 document.getElementById('station-toggle-box').classList.add('visible');
                 radarLayers.forEach(l => l.setOpacity(0.0));
-                loadGlobalNodeRadar();
+                loadSingleSiteRadar();
             }
         }
 
-        function loadGlobalNodeRadar() {
-            if(globalNodeRadarLayer) { map.removeLayer(globalNodeRadarLayer); }
-            if(!currentRadarPath) return;
-
+        function loadSingleSiteRadar() {
+            if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); }
+            
             var dropdown = document.getElementById('radar-station-dropdown');
             var selectedOption = dropdown.options[dropdown.selectedIndex];
-            var countryCode = selectedOption.value;
+            if (!selectedOption || !selectedOption.value || !masterGlobalRadarPath) return;
 
-            // Dynamically overlay selected target country's active network tiles
-            globalNodeRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${currentRadarPath}/256/{z}/{x}/{y}/2/1_1.png`, {
+            // Build precision hardware overlay path via RainViewer structure
+            singleSiteRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${masterGlobalRadarPath}/256/{z}/{x}/{y}/2/1_1.png?station=${selectedOption.value}`, {
                 opacity: 0.85,
                 pane: 'radarPane',
                 maxZoom: 18
             }).addTo(map);
 
-            // Re-center camera arrays to focus on selected tracking matrix
+            // Fetch structural positioning metrics to focus camera array
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
-            var zoom = parseInt(selectedOption.getAttribute('data-zoom'));
-            map.setView([lat, lon], zoom);
-            
-            document.getElementById('coords-display').innerHTML = "Active Target: " + selectedOption.text;
+            map.setView([lat, lon], 8);
+
+            document.getElementById('coords-display').innerHTML = "Active Target: " + selectedOption.text.split(' - ')[1];
         }
 
         function executeStationChangeToggle() {
             if (currentRadarMode === 'single') {
-                loadGlobalNodeRadar();
+                loadSingleSiteRadar();
             }
         }
 
@@ -492,7 +517,7 @@
                 .then(res => res.json())
                 .then(metadata => {
                     const displayFrames = metadata.radar.past.slice(-5); 
-                    currentRadarPath = displayFrames[displayFrames.length - 1].path;
+                    masterGlobalRadarPath = displayFrames[displayFrames.length - 1].path;
                     
                     displayFrames.forEach((frame) => {
                         const radarLayer = L.tileLayer(`https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, {
@@ -540,7 +565,7 @@
                 .then(res => res.json())
                 .then(resData => {
                     if(resData && resData.length > 0) {
-                        map.setView([parseFloat(resData[0].lat), parseFloat(resData[0].lon)], 7);
+                        map.setView([parseFloat(resData[0].lat), parseFloat(resData[0].lon)], 8);
                         document.getElementById('coords-display').innerHTML = "Active Target: " + resData[0].display_name.split(',')[0];
                     }
                 }).catch(() => {});
