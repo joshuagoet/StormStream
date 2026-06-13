@@ -210,14 +210,14 @@
         #play-btn { background: #22c55e; border: none; color: white; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; }
         #time-display { font-size: 11px; font-family: monospace; color: #22c55e; font-weight: bold; }
 
-        /* NWS SEVERE WEATHER WARNING POPUP MODULE */
+        /* NWS SEVERE WEATHER WARNING POPUP DESIGN CONFIGURATION */
         .nws-severe-popup {
             background: rgba(131, 142, 10, 0.96);
             border: 2px solid rgba(210, 225, 40, 0.9);
             border-radius: 8px;
             padding: 12px 14px;
             color: #ffffff;
-            width: 280px;
+            width: 290px;
             font-family: Arial, sans-serif;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             position: relative;
@@ -236,7 +236,7 @@
             align-items: center;
             justify-content: space-between;
             margin-bottom: 4px;
-            padding-left: 20px; /* Leaves clear room on the left for the swapped close cross button */
+            padding-left: 20px; 
         }
         .nws-title-badge {
             font-size: 13.5px;
@@ -247,7 +247,6 @@
             flex-grow: 1;
         }
         
-        /* THE SWAPPED INFO ICON (Now locks on the far right edge cleanly) */
         .nws-info-trigger {
             background: rgba(255, 255, 255, 0.22);
             color: #ffffff !important;
@@ -377,10 +376,11 @@
             line-height: 1;
         }
         .modal-close-btn:hover { color: #fff; }
+        
         .modal-body-content {
             padding: 20px;
             overflow-y: auto;
-            color: #00ff66; /* Classic terminal green styling for clean raw teleprinter data feeds */
+            color: #ffffff; 
             font-family: 'Courier New', Courier, monospace;
             font-size: 12.5px;
             line-height: 1.5;
@@ -389,7 +389,6 @@
             letter-spacing: 0.2px;
         }
 
-        /* LEAFLET CONTAINER INLINE POSITION FLIPPING FOR POPUPS */
         .leaflet-popup {
             pointer-events: auto !important;
         }
@@ -404,7 +403,6 @@
             pointer-events: auto !important;
         }
         
-        /* SWAPPED LEAFLET CROSS SECTOR BUTTON (Now aligns to top-left edge safely) */
         .leaflet-popup-close-button {
             position: absolute !important;
             top: 12px !important;
@@ -719,7 +717,7 @@
             { id: "vaaf", lat: 36.50, lon: -76.50, name: "Norfolk, VA" },
             { id: "vbg", lat: 34.73, lon: -120.58, name: "Vandenberg AFB, CA" },
             { id: "vnx", lat: 36.74, lon: -98.13, name: "Vance AFB, OK" },
-            { id: "vsk", timetag: "2026", lat: 43.10, lon: -76.22, name: "Syracuse North, NY" },
+            { id: "vsk", lat: 43.10, lon: -76.22, name: "Syracuse North, NY" },
             { id: "vax", lat: 30.78, lon: -83.19, name: "Moody AFB, GA" },
             { id: "wst", lat: 40.12, lon: -74.15, name: "Belmar, NJ" },
             { id: "wtc", lat: 35.41, lon: -97.74, name: "Will Rogers, OK" },
@@ -963,17 +961,34 @@
                 }
 
                 const parsedSectors = (properties.areaDesc || "Regional Sector").split(';')[0];
-                const windVelocity = properties.maxWindGust || "60 MPH";
-                const hailDiameter = properties.maxHailSize || "<0.75\" - Penny";
-                const riskThreat = eventUpper.includes("TORNADO") ? "Extreme" : "Considerable";
-                const tornadoTag = eventUpper.includes("TORNADO") ? "Observed" : "Possible";
+                const coreAdvisoryNarrative = properties.description || "";
                 
-                // PARSING THE NWS TELETYPE STREAM MANUALLY INTO Monospace TELEPRINTER PACKAGES
+                // REGEX EXTRACTION ENGINE: Scans description for precise wire values to map onto visual popup components
+                var extractedHazardText = "Radar indicated.";
+                var extractedSourceText = "Radar indicated.";
+
+                var hazardMatchPattern = /HAZARD\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
+                if (hazardMatchPattern && hazardMatchPattern[1]) {
+                    extractedHazardText = hazardMatchPattern[1].split('$$')[0].split('&&')[0].trim();
+                } else if (properties.maxWindGust || properties.maxHailSize) {
+                    extractedHazardText = `${properties.maxWindGust || 'Damaging winds'} and ${properties.maxHailSize || 'hail core'} threat.`;
+                }
+
+                var sourceMatchPattern = /SOURCE\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
+                if (sourceMatchPattern && sourceMatchPattern[1]) {
+                    extractedSourceText = sourceMatchPattern[1].split('$$')[0].split('&&')[0].trim();
+                }
+
+                // Clean the text data blocks if forecaster footer strings leaked inside
+                if (extractedHazardText.includes("SOURCE...")) extractedHazardText = extractedHazardText.split("SOURCE...")[0].trim();
+                if (extractedHazardText.includes("IMPACT...")) extractedHazardText = extractedHazardText.split("IMPACT...")[0].trim();
+                if (extractedSourceText.includes("IMPACT...")) extractedSourceText = extractedSourceText.split("IMPACT...")[0].trim();
+
+                const riskThreat = eventUpper.includes("TORNADO") ? "Extreme" : "Considerable";
+                
                 var wmoHeaderToken = properties.wmoIdentifier || "WUUS53 KLSX " + new Date().getDate() + "2349";
                 var easIdToken = properties.id ? properties.id.split('.').pop().toUpperCase() : "SVRLSX";
                 var trackingMatrixCode = properties.geocode && properties.geocode.UGC ? properties.geocode.UGC[0] + "-120030-" : "MOC019-027-120030-";
-                
-                var coreAdvisoryNarrative = properties.description || "No live descriptive telemetry package attached.";
                 var instructionsBlock = properties.instruction || "Seek interior shelters inside substantial frames instantly.";
 
                 const compiledRawTextReport = `
@@ -999,8 +1014,8 @@ The National Weather Service has issued a
   ${coreAdvisoryNarrative}
 
 * CRITICAL THREAT MATRIX ATTRIBUTES:
-  HAZARD...${windVelocity} Gust Vectors and ${hailDiameter} Hail Shells.
-  SOURCE...Live Radar Indicated Tracking Loops.
+  HAZARD...${extractedHazardText}
+  SOURCE...${extractedSourceText}
 
 * PRECAUTIONARY/PREPAREDNESS ACTIONS...
   ${instructionsBlock}
@@ -1009,9 +1024,9 @@ The National Weather Service has issued a
 
 LAT...LON AREA POLYS CAPTURED ON INTERCEPT GRAPH
 HAIL THREAT...${properties.hailThreat || 'RADAR INDICATED'}
-MAX HAIL SIZE...${hailDiameter}
+MAX HAIL SIZE...${properties.maxHailSize || 'N/A'}
 WIND THREAT...${properties.windThreat || 'RADAR INDICATED'}
-MAX WIND GUST...${windVelocity}
+MAX WIND GUST...${properties.maxWindGust || 'N/A'}
 
 $$
 
@@ -1030,7 +1045,6 @@ NWS Meteorological Operations Center Broadcast Loop
                             <div class="nws-severe-popup ${popupThemeClass}">
                                 <div class="nws-header-container">
                                     <div class="nws-title-badge">${eventName}</div>
-                                    <!-- FIXED INTERCEPT OVERLAPS: Info tracking dot bubble locked cleanly to the top-right corner edge -->
                                     <button class="nws-info-trigger" onclick="launchNwsTextStatementModal('${alertId}')" title="View Full Text Statement">ⓘ</button>
                                 </div>
                                 <div class="nws-expiry-subtitle">Expires in 45 Min</div>
@@ -1042,22 +1056,17 @@ NWS Meteorological Operations Center Broadcast Loop
                                 </div>
                                 <div class="nws-grid-badges">
                                     <div class="nws-badge-block">
-                                        <span>Tornado</span>${tornadoTag}
+                                        <span>Source</span>${extractedSourceText}
                                     </div>
                                     <div class="nws-badge-block">
                                         <span>Damage Threat</span>${riskThreat}
                                     </div>
                                 </div>
-                                <div class="nws-grid-badges">
-                                    <div class="nws-badge-block">
-                                        <span>Wind</span>${windVelocity}
-                                    </div>
-                                    <div class="nws-badge-block">
-                                        <span>Hail</span>${hailDiameter}
-                                    </div>
+                                <div class="nws-pill-row" style="margin-top: 4px; margin-bottom: 0px;">
+                                    <b>Hazard</b>${extractedHazardText}
                                 </div>
                             </div>
-                        `, { maxWidth: 300, closeButton: true });
+                        `, { maxWidth: 310, closeButton: true });
                     }
                 }).addTo(polygonAlertGroup);
             });
