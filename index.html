@@ -210,7 +210,7 @@
         #play-btn { background: #22c55e; border: none; color: white; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; }
         #time-display { font-size: 11px; font-family: monospace; color: #22c55e; font-weight: bold; }
 
-        /* NWS SEVERE WEATHER WARNING POPUP DESIGN CONFIGURATION */
+        /* NWS SEVERE WEATHER WARNING POPUP MODULE */
         .nws-severe-popup {
             background: rgba(131, 142, 10, 0.96);
             border: 2px solid rgba(210, 225, 40, 0.9);
@@ -289,7 +289,6 @@
         .nws-countdown-fill {
             height: 100%;
             background: #ffffff;
-            width: 65%;
         }
         .nws-pill-row {
             background: rgba(0, 0, 0, 0.2);
@@ -948,6 +947,7 @@
 
                 let strokeColor = "#a855f7"; let strokeWeight = 2.0; let fillAlpha = 0.10; 
                 let popupThemeClass = "";
+                let isFloodWarning = eventUpper.includes("FLOOD");
 
                 if (eventUpper.includes("TORNADO")) {
                     strokeColor = "#FF0000"; strokeWeight = 4.0; fillAlpha = 0.25;
@@ -955,7 +955,7 @@
                 } else if (eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM")) {
                     strokeColor = "#FFAA00"; strokeWeight = 2.5; fillAlpha = 0.15;
                     popupThemeClass = "severe-thunderstorm-popup";
-                } else if (eventUpper.includes("FLASH FLOOD") || eventUpper.includes("FLOOD")) {
+                } else if (isFloodWarning) {
                     strokeColor = "#00FF00"; strokeWeight = 2.5; fillAlpha = 0.15;
                     popupThemeClass = "flood-warning-popup";
                 }
@@ -963,7 +963,6 @@
                 const parsedSectors = (properties.areaDesc || "Regional Sector").split(';')[0];
                 const coreAdvisoryNarrative = properties.description || "";
                 
-                // REGEX EXTRACTION ENGINE: Scans description for precise wire values to map onto visual popup components
                 var extractedHazardText = "Radar indicated.";
                 var extractedSourceText = "Radar indicated.";
 
@@ -979,13 +978,25 @@
                     extractedSourceText = sourceMatchPattern[1].split('$$')[0].split('&&')[0].trim();
                 }
 
-                // Clean the text data blocks if forecaster footer strings leaked inside
                 if (extractedHazardText.includes("SOURCE...")) extractedHazardText = extractedHazardText.split("SOURCE...")[0].trim();
                 if (extractedHazardText.includes("IMPACT...")) extractedHazardText = extractedHazardText.split("IMPACT...")[0].trim();
                 if (extractedSourceText.includes("IMPACT...")) extractedSourceText = extractedSourceText.split("IMPACT...")[0].trim();
 
                 const riskThreat = eventUpper.includes("TORNADO") ? "Extreme" : "Considerable";
+                const tornadoTag = eventUpper.includes("TORNADO") ? "Observed" : "Possible";
                 
+                // CRITICAL DYNAMIC DURATION CALCULATION STRIP
+                var timeRemainingLabel = "Active Alert";
+                if (properties.ends) {
+                    var endTimestamp = new Date(properties.ends).getTime();
+                    var durationMinutesDiff = Math.ceil((endTimestamp - Date.now()) / (1000 * 60));
+                    if (durationMinutesDiff > 0) {
+                        timeRemainingLabel = `Expires in ${durationMinutesDiff} Min`;
+                    } else {
+                        timeRemainingLabel = "Expired";
+                    }
+                }
+
                 var wmoHeaderToken = properties.wmoIdentifier || "WUUS53 KLSX " + new Date().getDate() + "2349";
                 var easIdToken = properties.id ? properties.id.split('.').pop().toUpperCase() : "SVRLSX";
                 var trackingMatrixCode = properties.geocode && properties.geocode.UGC ? properties.geocode.UGC[0] + "-120030-" : "MOC019-027-120030-";
@@ -1038,6 +1049,33 @@ NWS Meteorological Operations Center Broadcast Loop
                     text: compiledRawTextReport
                 };
 
+                // COMPANION FILTER INJECTION ENGINE FOR FLOOD WARNING STRUCTS
+                let popupInnerTemplateMarkup = "";
+                if (isFloodWarning) {
+                    popupInnerTemplateMarkup = `
+                        <div class="nws-pill-row" style="margin-top: 6px; margin-bottom: 0px;">
+                            <b>Counties</b>${parsedSectors}
+                        </div>
+                    `;
+                } else {
+                    popupInnerTemplateMarkup = `
+                        <div class="nws-pill-row">
+                            <b>Counties</b>${parsedSectors}
+                        </div>
+                        <div class="nws-grid-badges">
+                            <div class="nws-badge-block">
+                                <span>Source</span>${extractedSourceText}
+                            </div>
+                            <div class="nws-badge-block">
+                                <span>Damage Threat</span>${riskThreat}
+                            </div>
+                        </div>
+                        <div class="nws-pill-row" style="margin-top: 4px; margin-bottom: 0px;">
+                            <b>Hazard</b>${extractedHazardText}
+                        </div>
+                    `;
+                }
+
                 L.geoJSON(feature, {
                     style: { color: strokeColor, weight: strokeWeight, fillColor: strokeColor, fillOpacity: fillAlpha },
                     onEachFeature: function(f, layer) {
@@ -1047,24 +1085,11 @@ NWS Meteorological Operations Center Broadcast Loop
                                     <div class="nws-title-badge">${eventName}</div>
                                     <button class="nws-info-trigger" onclick="launchNwsTextStatementModal('${alertId}')" title="View Full Text Statement">ⓘ</button>
                                 </div>
-                                <div class="nws-expiry-subtitle">Expires in 45 Min</div>
+                                <div class="nws-expiry-subtitle">${timeRemainingLabel}</div>
                                 <div class="nws-countdown-track">
                                     <div class="nws-countdown-fill"></div>
                                 </div>
-                                <div class="nws-pill-row">
-                                    <b>Counties</b>${parsedSectors}
-                                </div>
-                                <div class="nws-grid-badges">
-                                    <div class="nws-badge-block">
-                                        <span>Source</span>${extractedSourceText}
-                                    </div>
-                                    <div class="nws-badge-block">
-                                        <span>Damage Threat</span>${riskThreat}
-                                    </div>
-                                </div>
-                                <div class="nws-pill-row" style="margin-top: 4px; margin-bottom: 0px;">
-                                    <b>Hazard</b>${extractedHazardText}
-                                </div>
+                                ${popupInnerTemplateMarkup}
                             </div>
                         `, { maxWidth: 310, closeButton: true });
                     }
