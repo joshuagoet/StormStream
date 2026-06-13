@@ -325,11 +325,24 @@
         };
 
         function loadWeatherAlertPipeline() {
-            masterAlertFeatures = backupAlertDatabase;
-            instantAlertCount = masterAlertFeatures.length;
-            document.getElementById('badge-counter-element').innerText = instantAlertCount;
-            renderFilteredAlerts();
-            plotWarningPolygonsOnMap();
+            // Pulls live active alerts straight from the National Weather Service API
+            fetch("https://api.weather.gov/alerts/active?status=actual")
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.features) {
+                        // Filters down to only show actual warnings, bypassing watches or advisories
+                        masterAlertFeatures = data.features.filter(f => {
+                            const ev = (f.properties.event || "").toUpperCase();
+                            return ev.includes("WARNING");
+                        });
+                        
+                        instantAlertCount = masterAlertFeatures.length;
+                        document.getElementById('badge-counter-element').innerText = instantAlertCount;
+                        renderFilteredAlerts();
+                        plotWarningPolygonsOnMap();
+                    }
+                })
+                .catch(err => console.error("NWS Live Stream Anomaly:", err));
         }
 
         function switchRadarMode(mode) {
