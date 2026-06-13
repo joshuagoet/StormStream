@@ -437,7 +437,7 @@
             { id: "mci", lat: 39.30, lon: -94.71, name: "Kansas City Intl, MO" },
             { id: "mco", lat: 28.43, lon: -81.31, name: "Orlando, FL" },
             { id: "mda", lat: 39.11, lon: -76.88, name: "Columbia, MD" },
-            { id: "mdw", lat: 41.79, lon: -87.75, name: "Chicago Midway, IL" },
+            { id: "mdw", lat: 41.79, font: 12, lon: -87.75, name: "Chicago Midway, IL" },
             { id: "meg", lat: 35.34, lon: -89.87, name: "Memphis, TN" },
             { id: "mia", lat: 25.79, lon: -80.29, name: "Miami, FL" },
             { id: "mke", lat: 42.95, lon: -87.90, name: "Milwaukee, WI" },
@@ -569,9 +569,6 @@
             initRainViewerRadar();
             loadWeatherAlertPipeline();
 
-            setInterval(loadWeatherAlertPipeline, 30000);
-            setInterval(updateClockDisplay, 1000);
-
             document.addEventListener("visibilitychange", function() {
                 if (!document.hidden) {
                     loadWeatherAlertPipeline();
@@ -626,7 +623,6 @@
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); singleSiteRadarLayer = null; }
 
             if(mode === 'national') {
-                // FIXED TYPO BLOCK: Enforced classList validation routing hooks cleanly
                 document.getElementById('radar-us-btn').classList.add('active');
                 map.getPane('usMosaicPane').style.display = 'block';
                 map.getPane('singleSitePane').style.display = 'none';
@@ -662,11 +658,13 @@
                 [northernLatitude, easternLongitude]
             );
 
+            // FIXED ROUTE: Constrained singleSite radar tile engine to a maximum zoom of 10 to suppress infrastructure limit flags
             singleSiteRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${currentActiveGlobalPath}/256/{z}/{x}/{y}/2/1_1.png?cb=${Date.now()}`, {
                 opacity: 0.85,
                 pane: 'singleSitePane', 
                 bounds: filterClippingBounds, 
-                maxZoom: 18,
+                maxNativeZoom: 10, // RainViewer server threshold lock
+                maxZoom: 18,       // Allows user upscaling beyond level 10 safely without supported-image warnings
                 noWrap: true 
             }).addTo(map);
 
