@@ -277,7 +277,7 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        window.onload = function() {
+   window.onload = function() {
             map = L.map('map', {
                 center: [centerLat, centerLng],
                 zoom: 6, 
@@ -304,8 +304,14 @@
 
             setInterval(loadWeatherAlertPipeline, 30000);
             setInterval(updateClockDisplay, 1000);
-        };
 
+            // PASTED HERE:
+            document.addEventListener("visibilitychange", function() {
+                if (!document.hidden) {
+                    loadWeatherAlertPipeline();
+                }
+            });
+        };
         function loadWeatherAlertPipeline() {
             fetch("https://api.weather.gov/alerts/active?status=actual")
                 .then(response => response.json())
