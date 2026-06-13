@@ -374,7 +374,7 @@
             }).addTo(map);
         }
 
-        function plotWarningPolygonsOnMap() {
+  function plotWarningPolygonsOnMap() {
             polygonAlertGroup.clearLayers();
 
             masterAlertFeatures.forEach(feature => {
@@ -384,14 +384,30 @@
                 const eventName = properties.event || "Weather Event";
                 const eventUpper = eventName.toUpperCase();
 
-                let strokeColor = "#FFAA00"; let strokeWeight = 2.5; let fillAlpha = 0.15; let themeClass = ""; 
+                // Skip pure watches or advisories to keep the map clean
+                if (eventUpper.includes("WATCH") || eventUpper.includes("ADVISORY")) return;
 
+                // Default baseline properties (Marine/Special Warnings)
+                let strokeColor = "#a855f7"; // Purple default
+                let strokeWeight = 2.0; 
+                let fillAlpha = 0.10; 
+                let themeClass = ""; 
+
+                // Accurate matching algorithm for real-time NWS event definitions
                 if (eventUpper.includes("TORNADO")) {
-                    strokeColor = "#FF0000"; strokeWeight = 3.5; fillAlpha = 0.22; themeClass = "tornado-warn";
-                } else if (eventUpper.includes("SEVERE")) {
-                    strokeColor = "#FF0055"; strokeWeight = 2.5; fillAlpha = 0.16;
-                } else if (eventUpper.includes("FLASH FLOOD")) {
-                    strokeColor = "#00FF00"; strokeWeight = 2.5; fillAlpha = 0.16; themeClass = "flash-flood-warn";
+                    strokeColor = "#FF0000"; // Bright Red
+                    strokeWeight = 4.0; 
+                    fillAlpha = 0.25; 
+                    themeClass = "tornado-warn";
+                } else if (eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM")) {
+                    strokeColor = "#FFAA00"; // Sharp Orange / Yellow
+                    strokeWeight = 2.5; 
+                    fillAlpha = 0.15;
+                } else if (eventUpper.includes("FLASH FLOOD") || eventUpper.includes("FLOOD")) {
+                    strokeColor = "#00FF00"; // Neon Green
+                    strokeWeight = 2.5; 
+                    fillAlpha = 0.15; 
+                    themeClass = "flash-flood-warn";
                 }
 
                 L.geoJSON(feature, {
@@ -400,7 +416,7 @@
                         layer.bindPopup(`
                             <div class="broadcast-popup-frame ${themeClass}">
                                 <div class="popup-header">${eventName}</div>
-                                <div class="popup-meta-row"><b>Sectors Impacted</b>${properties.areaDesc || "Regional Sector"}</div>
+                                <div class="popup-meta-row"><b>Sectors Impacted:</b><br>${properties.areaDesc || "Regional Sector"}</div>
                             </div>
                         `, { maxWidth: 280 });
                     }
