@@ -30,9 +30,14 @@
             filter: hue-rotate(185deg) invert(1) saturate(0.0) brightness(0.60) contrast(1.15) !important;
         }
 
-        /* DYNAMIC MATRIX: UNIFIED COLOR CALIBRATION FOR NATIONAL AND SINGLE-SITE REFLECTIVITY */
-        .radar-broadcast-pane {
+        /* HARDWARE ACCELERATED FILTER PANES */
+        .mosaic-filtered-pane {
             filter: saturate(2.5) contrast(1.3) brightness(1.1) !important;
+        }
+
+        /* RECALIBRATED MATRIX: Maps standard RIDGE green/red into the custom cyan/pink palette */
+        .singlesite-filtered-pane {
+            filter: hue-rotate(145deg) saturate(2.6) contrast(1.4) brightness(1.05) !important;
         }
 
         #hud-panel { 
@@ -533,7 +538,6 @@
 
             map.createPane('radarPane');
             map.getPane('radarPane').style.zIndex = 400;
-            map.getPane('radarPane').className += ' radar-broadcast-pane';
 
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
                 pane: 'tilePane',
@@ -604,10 +608,12 @@
 
             if(mode === 'national') {
                 document.getElementById('radar-us-btn').classList.add('active');
+                map.getPane('radarPane').className = 'leaflet-pane radar-pane mosaic-filtered-pane';
                 if(radarLayers.length > 0) radarLayers[currentRadarIndex].setOpacity(0.85);
             } else {
                 document.getElementById('radar-site-btn').classList.add('active');
                 document.getElementById('station-toggle-box').classList.add('visible');
+                map.getPane('radarPane').className = 'leaflet-pane radar-pane singlesite-filtered-pane';
                 radarLayers.forEach(l => l.setOpacity(0.0));
                 loadSingleSiteRadar();
             }
@@ -622,13 +628,12 @@
 
             var stationID = selectedOption.value.toUpperCase();
 
-            // FIXED ROUTE: ROUTED SINGLE-SITE TILES DIRECTLY TO RADARPANE FOR STYLING MATCH
             singleSiteRadarLayer = L.tileLayer.wms("https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/ridge.cgi", {
                 layers: 'single',
                 format: 'image/png',
                 transparent: true,
                 opacity: 0.85,
-                pane: 'radarPane', // Enforces alignment with saturation CSS filter
+                pane: 'radarPane',
                 sector: stationID,
                 prod: 'N0B',
                 attribution: 'IEM RIDGE',
@@ -637,7 +642,7 @@
 
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
-            map.setView([lat, lon], 8);
+            map.setView([lat, lon], 6); // Snaps zoom layer alignment out to match default composite bounds
 
             document.getElementById('coords-display').innerHTML = "Active Target: " + selectedOption.text.split(' (')[0];
         }
@@ -722,6 +727,8 @@
         }
 
         function initRainViewerRadar() {
+            map.getPane('radarPane').className = 'leaflet-pane radar-pane mosaic-filtered-pane';
+
             fetch("https://api.rainviewer.com/public/weather-maps.json")
                 .then(res => res.json())
                 .then(metadata => {
