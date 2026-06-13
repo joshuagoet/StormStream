@@ -210,6 +210,101 @@
         #playback-bar { margin-top: 12px; display: flex; align-items: center; justify-content: space-between; background: #15161c; padding: 6px 10px; border-radius: 4px; }
         #play-btn { background: #22c55e; border: none; color: white; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; }
         #time-display { font-size: 11px; font-family: monospace; color: #22c55e; font-weight: bold; }
+
+        /* NWS SEVERE THUNDERSTORM WARNING POPUP STYLE MODULE */
+        .nws-severe-popup {
+            background: rgba(131, 142, 10, 0.95);
+            border: 2px solid rgba(210, 225, 40, 0.9);
+            border-radius: 8px;
+            padding: 12px 14px;
+            color: #ffffff;
+            width: 280px;
+            font-family: Arial, sans-serif;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .nws-severe-popup.tornado-warning-popup {
+            background: rgba(139, 10, 10, 0.95);
+            border-color: rgba(235, 40, 40, 0.9);
+        }
+        .nws-severe-popup.flood-warning-popup {
+            background: rgba(10, 100, 40, 0.95);
+            border-color: rgba(40, 210, 80, 0.9);
+        }
+        .nws-title-badge {
+            font-size: 14px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+            line-height: 1.2;
+        }
+        .nws-expiry-subtitle {
+            font-size: 9.5px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.85);
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .nws-countdown-track {
+            height: 3px;
+            background: rgba(255,255,255,0.25);
+            border-radius: 2px;
+            margin-bottom: 8px;
+            overflow: hidden;
+        }
+        .nws-countdown-fill {
+            height: 100%;
+            background: #ffffff;
+            width: 65%;
+        }
+        .nws-pill-row {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            padding: 6px 8px;
+            margin-bottom: 6px;
+            font-size: 10.5px;
+            line-height: 1.3;
+        }
+        .nws-pill-row b {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.75);
+            display: inline-block;
+            margin-right: 4px;
+        }
+        .nws-grid-badges {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin-bottom: 6px;
+        }
+        .nws-badge-block {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            padding: 5px 6px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .nws-badge-block span {
+            font-size: 8.5px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.7) !important;
+            display: block;
+            margin-bottom: 1px;
+        }
+        .leaflet-popup-content-wrapper {
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+        }
+        .leaflet-popup-content {
+            margin: 0 !important;
+        }
+        .leaflet-popup-close-button {
+            color: #ffffff !important;
+            padding: 8px 8px 0 0 !important;
+        }
     </style>
 </head>
 <body>
@@ -513,7 +608,6 @@
         ];
 
         window.onload = function() {
-            // UNIFIED MAX ZOOM 18 CONSTRAINTS - REMOVES ZOOM WARNING POPUPS FOREVER
             map = L.map('map', {
                 center: [centerLat, centerLng],
                 zoom: 6, 
@@ -565,7 +659,6 @@
             initRainViewerRadar();
             loadWeatherAlertPipeline();
 
-            // Native programmatic trigger: Keeps your feathered circle perfectly positioned when panning/zooming
             map.on('zoomend move moveend', recalibratePerimeterGradientMask);
 
             document.addEventListener("visibilitychange", function() {
@@ -639,7 +732,6 @@
             }
         }
 
-        // RE-ENGINEERED CANVAS INTERCEPT STENCIL ENGINE
         function loadSingleSiteRadar() {
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); }
             if(singleSiteBorderCircle) { map.removeLayer(singleSiteBorderCircle); }
@@ -651,7 +743,6 @@
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
 
-            // WeatherWise / Weatherfront clean outer black perimeter tracking line
             singleSiteBorderCircle = L.circle([lat, lon], {
                 radius: 250000, 
                 color: '#1a1b21',
@@ -661,13 +752,19 @@
                 pointerEvents: 'none'
             }).addTo(map);
 
+            var offsetPaddingLat = 4.00; 
+            var offsetPaddingLng = 5.00;
+            var compositeSafeBoundingArea = L.latLngBounds(
+                [lat - offsetPaddingLat, lon - offsetPaddingLng],
+                [lat + offsetPaddingLat, lon + offsetPaddingLng]
+            );
+
             var targetTilePath = currentActiveGlobalPath ? currentActiveGlobalPath : "/v2/radar/nowcast";
 
-            // BRINGS CORES BACK INSTANTLY: Removed the square layer bounds conflict. 
-            // Pulls standard mosaic frames so your custom cyan/pink colors load immediately without getting dropped.
             singleSiteRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${targetTilePath}/256/{z}/{x}/{y}/2/1_1.png?cb=${Date.now()}`, {
                 opacity: 0.85,
                 pane: 'singleSitePane',
+                bounds: compositeSafeBoundingArea, 
                 maxNativeZoom: 7, 
                 maxZoom: 18
             }).addTo(map);
@@ -684,11 +781,9 @@
             }
         }
 
-        // SMOOTH CIRCULAR FEATHERED MASK TRANSLATION CORE
         function recalibratePerimeterGradientMask() {
             if (currentRadarMode !== 'single' || !singleSiteBorderCircle || !map) return;
 
-            // Translate geo coordinates cleanly into exact active browser window viewport pixels
             var centerPointCoordinates = map.latLngToContainerPoint(singleSiteBorderCircle.getLatLng());
             
             var initialLatLng = singleSiteBorderCircle.getLatLng();
@@ -701,13 +796,13 @@
 
             var paneElement = map.getPane('singleSitePane');
             if (paneElement) {
-                // HIGH-DEFINITION ALPHA GRADIENT MASK: Perfect circle feathering that blends out seamlessly at the perimeter
-                var gradientMaskString = `radial-gradient(circle ${liveRadiusPixels}px at ${centerPointCoordinates.x}px ${centerPointCoordinates.y}px, rgba(0,0,0,1) 78%, rgba(0,0,0,0.3) 93%, rgba(0,0,0,0) 100%)`;
+                var gradientMaskString = `radial-gradient(circle ${liveRadiusPixels}px at ${centerPointCoordinates.x}px ${centerPointCoordinates.y}px, rgba(0,0,0,1) 80%, rgba(0,0,0,0.3) 93%, rgba(0,0,0,0) 100%)`;
                 paneElement.style.maskImage = gradientMaskString;
                 paneElement.style.webkitMaskImage = gradientMaskString;
             }
         }
 
+        /* INJECTED DYNAMIC NWS POPUP FORMATTER COMPONENT */
         function plotWarningPolygonsOnMap() {
             polygonAlertGroup.clearLayers();
 
@@ -719,25 +814,58 @@
 
                 if (eventUpper.includes("WATCH") || eventUpper.includes("ADVISORY")) return;
 
-                let strokeColor = "#a855f7"; let strokeWeight = 2.0; let fillAlpha = 0.10; let themeClass = ""; 
+                let strokeColor = "#a855f7"; let strokeWeight = 2.0; let fillAlpha = 0.10; 
+                let popupThemeClass = "";
 
                 if (eventUpper.includes("TORNADO")) {
-                    strokeColor = "#FF0000"; strokeWeight = 4.0; fillAlpha = 0.25; themeClass = "tornado-warn";
+                    strokeColor = "#FF0000"; strokeWeight = 4.0; fillAlpha = 0.25;
+                    popupThemeClass = "tornado-warning-popup";
                 } else if (eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM")) {
                     strokeColor = "#FFAA00"; strokeWeight = 2.5; fillAlpha = 0.15;
+                    popupThemeClass = "severe-thunderstorm-popup";
                 } else if (eventUpper.includes("FLASH FLOOD") || eventUpper.includes("FLOOD")) {
-                    strokeColor = "#00FF00"; strokeWeight = 2.5; fillAlpha = 0.15; themeClass = "flash-flood-warn";
+                    strokeColor = "#00FF00"; strokeWeight = 2.5; fillAlpha = 0.15;
+                    popupThemeClass = "flood-warning-popup";
                 }
+
+                // Parse alert properties for contextual popup strings
+                const parsedSectors = (properties.areaDesc || "Regional Coordinates").split(';')[0];
+                const windVelocity = properties.maxWindGust || "60 MPH";
+                const hailDiameter = properties.maxHailSize || "<0.75\" - Penny";
+                const riskThreat = eventUpper.includes("TORNADO") ? "Extreme" : "Considerable";
+                const tornadoTag = eventUpper.includes("TORNADO") ? "Observed" : "Possible";
 
                 L.geoJSON(feature, {
                     style: { color: strokeColor, weight: strokeWeight, fillColor: strokeColor, fillOpacity: fillAlpha },
                     onEachFeature: function(f, layer) {
                         layer.bindPopup(`
-                            <div class="broadcast-popup-frame ${themeClass}">
-                                <div class="popup-header">${eventName}</div>
-                                <div class="popup-meta-row"><b>Sectors Impacted:</b><br>${properties.areaDesc || "Regional Sector"}</div>
+                            <div class="nws-severe-popup ${popupThemeClass}">
+                                <div class="nws-title-badge">${eventName}</div>
+                                <div class="nws-expiry-subtitle">Expires in 45 Min</div>
+                                <div class="nws-countdown-track">
+                                    <div class="nws-countdown-fill"></div>
+                                </div>
+                                <div class="nws-pill-row">
+                                    <b>Counties</b>${parsedSectors}
+                                </div>
+                                <div class="nws-grid-badges">
+                                    <div class="nws-badge-block">
+                                        <span>Tornado</span>${tornadoTag}
+                                    </div>
+                                    <div class="nws-badge-block">
+                                        <span>Damage Threat</span>${riskThreat}
+                                    </div>
+                                </div>
+                                <div class="nws-grid-badges">
+                                    <div class="nws-badge-block">
+                                        <span>Wind</span>${windVelocity}
+                                    </div>
+                                    <div class="nws-badge-block">
+                                        <span>Hail</span>${hailDiameter}
+                                    </div>
+                                </div>
                             </div>
-                        `, { maxWidth: 280 });
+                        `, { maxWidth: 300, closeButton: true });
                     }
                 }).addTo(polygonAlertGroup);
             });
