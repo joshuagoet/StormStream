@@ -221,6 +221,7 @@
             font-family: Arial, sans-serif;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             position: relative;
+            pointer-events: auto !important; /* Forces interactivity within the card boundary */
         }
         .nws-severe-popup.tornado-warning-popup {
             background: rgba(139, 10, 10, 0.96);
@@ -232,39 +233,42 @@
         }
         .nws-header-container {
             display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            padding-right: 18px;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+            padding-right: 15px; /* Keeps title clear of the right hand close button */
         }
         .nws-title-badge {
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 900;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             line-height: 1.2;
         }
         
-        /* THE STYLIZED "i" ICON */
+        /* SHIFTED INFO ICON STYLE RESOLUTION */
         .nws-info-trigger {
-            background: rgba(255, 255, 255, 0.2);
-            color: #ffffff;
+            background: rgba(255, 255, 255, 0.22);
+            color: #ffffff !important;
             border-radius: 50%;
-            width: 18px;
+            min-width: 18px;
+            max-width: 18px;
             height: 18px;
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            justify-center: center;
-            font-size: 11px;
+            justify-content: center;
+            font-size: 11.5px;
             font-weight: bold;
-            cursor: pointer;
-            border: none;
-            transition: background 0.2s ease;
+            cursor: pointer !important;
+            border: 1px solid rgba(255,255,255,0.4);
+            transition: all 0.2s ease;
             text-align: center;
             line-height: 18px;
-            justify-content: center;
+            flex-shrink: 0;
         }
         .nws-info-trigger:hover {
-            background: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.45);
+            border-color: #ffffff;
         }
         .nws-expiry-subtitle {
             font-size: 9.5px;
@@ -272,6 +276,7 @@
             color: rgba(255,255,255,0.85);
             text-transform: uppercase;
             margin-bottom: 5px;
+            padding-left: 26px; /* Indents text underneath the top left info bubble */
         }
         .nws-countdown-track {
             height: 3px;
@@ -322,74 +327,83 @@
             margin-bottom: 1px;
         }
 
-        /* LIVE RAW TEXT MODAL SYSTEM OVERLAY */
+        /* METEOROLOGICAL TEXT BLOCK STATEMENT ADVISORY MODAL OVERLAY OVERRIDES */
         #raw-text-modal-backdrop {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(0, 0, 0, 0.75);
-            z-index: 200000 !important;
+            background: rgba(0, 0, 0, 0.82);
+            z-index: 2000000 !important; /* Places layer over HUD panel */
             display: none;
             align-items: center;
             justify-content: center;
-            pointer-events: auto;
+            pointer-events: auto !important;
         }
         #raw-text-modal-window {
-            background: #111216;
-            border: 2px solid #ffbb00;
+            background: #0f1015;
+            border: 2px solid #ff0055;
             border-radius: 8px;
-            width: 500px;
-            max-width: 90vw;
-            max-height: 75vh;
+            width: 520px;
+            max-width: 92vw;
+            max-height: 78vh;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.75);
+            pointer-events: auto !important;
         }
         .modal-header-bar {
-            padding: 12px 16px;
-            background: #181920;
-            border-bottom: 1px solid #282a35;
+            padding: 14px 18px;
+            background: #15161e;
+            border-bottom: 1px solid #222430;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            color: #ffbb00;
+            color: #ff0055;
             font-weight: bold;
             font-size: 13px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .modal-close-btn {
             background: transparent;
             border: none;
-            color: #aaa;
-            font-size: 18px;
+            color: #888;
+            font-size: 20px;
             cursor: pointer;
+            line-height: 1;
         }
         .modal-close-btn:hover { color: #fff; }
         .modal-body-content {
-            padding: 16px;
+            padding: 18px;
             overflow-y: auto;
-            color: #e2e8f0;
+            color: #cbd5e1;
             font-family: monospace;
-            font-size: 11.5px;
+            font-size: 12px;
             line-height: 1.6;
             white-space: pre-wrap;
-            background: #0a0b0d;
+            background: #07080c;
         }
 
+        /* INTERACTIVITY RE-ROUTING OVERRIDES FOR POPUP CONTAINERS */
+        .leaflet-popup {
+            pointer-events: auto !important;
+        }
         .leaflet-popup-content-wrapper {
             background: transparent !important;
             box-shadow: none !important;
             padding: 0 !important;
+            pointer-events: auto !important;
         }
         .leaflet-popup-content {
             margin: 0 !important;
+            pointer-events: auto !important;
         }
         .leaflet-popup-close-button {
             color: #ffffff !important;
-            padding: 12px 14px 0 0 !important;
-            z-index: 1000;
+            padding: 14px 16px 0 0 !important;
+            z-index: 10001 !important;
         }
     </style>
 </head>
@@ -397,11 +411,10 @@
 
     <div id="map"></div>
 
-    <!-- RAW TEXT ADVISORY OVERLAY DOM MATRIX -->
     <div id="raw-text-modal-backdrop" onclick="closeNwsTextStatementModal()">
         <div id="raw-text-modal-window" onclick="event.stopPropagation()">
             <div class="modal-header-bar">
-                <span id="modal-title-element">NWS Meteorological Statement</span>
+                <span id="modal-title-element">NWS Bulletin Statement</span>
                 <button class="modal-close-btn" onclick="closeNwsTextStatementModal()">✕</button>
             </div>
             <div id="modal-body-element" class="modal-body-content">Loading advisory loop segment...</div>
@@ -849,11 +862,19 @@
                 pointerEvents: 'none'
             }).addTo(map);
 
+            var offsetPaddingLat = 4.00; 
+            var offsetPaddingLng = 5.00;
+            var compositeSafeBoundingArea = L.latLngBounds(
+                [lat - offsetPaddingLat, lon - offsetPaddingLng],
+                [lat + offsetPaddingLat, lon + offsetPaddingLng]
+            );
+
             var targetTilePath = currentActiveGlobalPath ? currentActiveGlobalPath : "/v2/radar/nowcast";
 
             singleSiteRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${targetTilePath}/256/{z}/{x}/{y}/2/1_1.png?cb=${Date.now()}`, {
                 opacity: 0.85,
                 pane: 'singleSitePane',
+                bounds: compositeSafeBoundingArea, 
                 maxNativeZoom: 7, 
                 maxZoom: 18
             }).addTo(map);
@@ -885,13 +906,13 @@
 
             var paneElement = map.getPane('singleSitePane');
             if (paneElement) {
-                var gradientMaskString = `radial-gradient(circle ${liveRadiusPixels}px at ${centerPointCoordinates.x}px ${centerPointCoordinates.y}px, rgba(0,0,0,1) 78%, rgba(0,0,0,0.3) 92%, rgba(0,0,0,0) 100%)`;
+                var gradientMaskString = `radial-gradient(circle ${liveRadiusPixels}px at ${centerPointCoordinates.x}px ${centerPointCoordinates.y}px, rgba(0,0,0,1) 80%, rgba(0,0,0,0.3) 93%, rgba(0,0,0,0) 100%)`;
                 paneElement.style.maskImage = gradientMaskString;
                 paneElement.style.webkitMaskImage = gradientMaskString;
             }
         }
 
-        /* NWS PROCEDURAL STRUCT DATA COMPILER OVERLAY MODULE */
+        /* MASTER RAW BULLETIN MODAL RE-ROUTING FUNCTIONS */
         var activeNwsTextMapCache = {};
 
         function launchNwsTextStatementModal(alertId) {
@@ -939,7 +960,6 @@
                 const riskThreat = eventUpper.includes("TORNADO") ? "Extreme" : "Considerable";
                 const tornadoTag = eventUpper.includes("TORNADO") ? "Observed" : "Possible";
                 
-                // Construct full descriptive payload string for information text backup modal injection
                 const compiledRawTextReport = `
 ${eventName.toUpperCase()}
 NATIONAL WEATHER SERVICE BULLETIN
@@ -956,7 +976,6 @@ ${properties.description || 'No descriptive text package found.'}
 ${properties.instruction || 'Monitor regular broadcast lines constantly for vector updates.'}
                 `.trim();
 
-                // Cache textual assets globally to target through contextual inline listeners
                 activeNwsTextMapCache[alertId] = {
                     title: eventName,
                     text: compiledRawTextReport
@@ -968,8 +987,8 @@ ${properties.instruction || 'Monitor regular broadcast lines constantly for vect
                         layer.bindPopup(`
                             <div class="nws-severe-popup ${popupThemeClass}">
                                 <div class="nws-header-container">
-                                    <div class="nws-title-badge">${eventName}</div>
                                     <button class="nws-info-trigger" onclick="launchNwsTextStatementModal('${alertId}')" title="View Full Text Statement">ⓘ</button>
+                                    <div class="nws-title-badge">${eventName}</div>
                                 </div>
                                 <div class="nws-expiry-subtitle">Expires in 45 Min</div>
                                 <div class="nws-countdown-track">
