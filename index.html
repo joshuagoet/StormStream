@@ -302,6 +302,7 @@
         
         var currentRadarMode = 'national';
         var singleSiteRadarLayer = null;
+        var singleSiteBorderCircle = null; // Vector tracking for visual perimeter
         var currentActiveGlobalPath = ""; 
 
         var centerLat = 38.9742;
@@ -437,7 +438,7 @@
             { id: "mci", lat: 39.30, lon: -94.71, name: "Kansas City Intl, MO" },
             { id: "mco", lat: 28.43, lon: -81.31, name: "Orlando, FL" },
             { id: "mda", lat: 39.11, lon: -76.88, name: "Columbia, MD" },
-            { id: "mdw", lat: 41.79, font: 12, lon: -87.75, name: "Chicago Midway, IL" },
+            { id: "mdw", lat: 41.79, lon: -87.75, name: "Chicago Midway, IL" },
             { id: "meg", lat: 35.34, lon: -89.87, name: "Memphis, TN" },
             { id: "mia", lat: 25.79, lon: -80.29, name: "Miami, FL" },
             { id: "mke", lat: 42.95, lon: -87.90, name: "Milwaukee, WI" },
@@ -569,6 +570,9 @@
             initRainViewerRadar();
             loadWeatherAlertPipeline();
 
+            setInterval(loadWeatherAlertPipeline, 30000);
+            setInterval(updateClockDisplay, 1000);
+
             document.addEventListener("visibilitychange", function() {
                 if (!document.hidden) {
                     loadWeatherAlertPipeline();
@@ -621,6 +625,7 @@
             document.getElementById('station-toggle-box').classList.remove('visible');
 
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); singleSiteRadarLayer = null; }
+            if(singleSiteBorderCircle) { map.removeLayer(singleSiteBorderCircle); singleSiteBorderCircle = null; }
 
             if(mode === 'national') {
                 document.getElementById('radar-us-btn').classList.add('active');
@@ -639,6 +644,7 @@
 
         function loadSingleSiteRadar() {
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); }
+            if(singleSiteBorderCircle) { map.removeLayer(singleSiteBorderCircle); }
             
             var dropdown = document.getElementById('radar-station-dropdown');
             var selectedOption = dropdown.options[dropdown.selectedIndex];
@@ -647,25 +653,21 @@
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
 
-            var deltaOffset = 1.35; 
-            var southernLatitude = lat - deltaOffset;
-            var northernLatitude = lat + deltaOffset;
-            var westernLongitude = lon - deltaOffset;
-            var easternLongitude = lon + deltaOffset;
+            // WEATHERWISE / WEATHERFRONT CALIBRATION: Draws a precise 250,000 meter range circle perimeter directly over the radar station
+            singleSiteBorderCircle = L.circle([lat, lon], {
+                radius: 250000, 
+                color: '#1a1b21',
+                weight: 2.5,
+                fillColor: 'transparent',
+                pointerEvents: 'none'
+            }).addTo(map);
 
-            var filterClippingBounds = L.latLngBounds(
-                [southernLatitude, westernLongitude],
-                [northernLatitude, easternLongitude]
-            );
-
-            // FIXED ROUTE: Constrained singleSite radar tile engine to a maximum zoom of 10 to suppress infrastructure limit flags
+            // FIXED ERROR TUNNEL: Stripped strict geographic layout bounds out to suppress Leaflet zoom-not-supported warning flags completely
             singleSiteRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${currentActiveGlobalPath}/256/{z}/{x}/{y}/2/1_1.png?cb=${Date.now()}`, {
                 opacity: 0.85,
                 pane: 'singleSitePane', 
-                bounds: filterClippingBounds, 
-                maxNativeZoom: 10, // RainViewer server threshold lock
-                maxZoom: 18,       // Allows user upscaling beyond level 10 safely without supported-image warnings
-                noWrap: true 
+                maxNativeZoom: 10, 
+                maxZoom: 18
             }).addTo(map);
 
             map.setView([lat, lon], 6); 
