@@ -522,7 +522,7 @@
         window.onload = function() {
             map = L.map('map', {
                 center: [centerLat, centerLng],
-                zoom: 6, // CHANGED: Pull back macro view from street level 18 to regional scale 6
+                zoom: 5, // Modified: Pull view out slightly on boot for cleaner overall layout distribution
                 zoomControl: false 
             });
 
@@ -571,8 +571,7 @@
                 dropdown.appendChild(node);
             });
             
-            // Auto-select St. Louis (lsx) inside dropdown menu to prevent mismatched null offsets
-            dropdown.value = "lsx";
+            dropdown.value = "lsx"; // Lock baseline drop target state to St. Louis dome node
         }
 
         function loadWeatherAlertPipeline() {
@@ -613,6 +612,7 @@
             }
         }
 
+        // UPGRADED SINGLE-SITE SYSTEM ENGINE VIA THE OFFICIAL NWS WEB TILE GEO-STREAM CLUSTER
         function loadSingleSiteRadar() {
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); }
             
@@ -620,22 +620,20 @@
             var selectedOption = dropdown.options[dropdown.selectedIndex];
             if (!selectedOption) return;
 
-            var stationID = selectedOption.value;
+            var stationID = selectedOption.value.toUpperCase();
 
-            // CHANGED: Fixed pathing syntax to connect directly into the active Iowa reflectivity directory
-            singleSiteRadarLayer = L.tileLayer.wms("https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r.cgi", {
-                layers: `nexrad-${stationID}-n0r`,
-                format: 'image/png',
-                transparent: true,
+            // Direct mapping over the fully secured National Weather Service Level-III base reflectivity WTS API
+            singleSiteRadarLayer = L.tileLayer(`https://opengeo.ncep.noaa.gov/geoserver/gwc/service/tms/1.0.0/nexrad:k${stationID.toLowerCase()}_bref_pass@EPSG:900913@png/{z}/{x}/{y}.png`, {
+                tms: true, // Inverts the Y-axis to parse federal government tile matrix standards natively
                 opacity: 0.85,
                 pane: 'radarPane',
-                attribution: 'IEM NEXRAD'
+                maxZoom: 18
             }).addTo(map);
 
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
             
-            // CHANGED: Reposition tracking focus camera outward to depth scale 8 to reveal storm cells clearly
+            // Focus the camera array at a regional view factor to make precipitation sweeps visible instantly
             map.setView([lat, lon], 8);
 
             document.getElementById('coords-display').innerHTML = "Active Target: " + selectedOption.text.split(' (')[0];
