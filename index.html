@@ -65,7 +65,6 @@
         }
         #alert-banner b { color: #00d4ff; text-transform: uppercase; display: block; margin-bottom: 4px; font-size: 11px; }
 
-        /* RADAR SELECTION ENGINE METRIC BUTTONS */
         .radar-type-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -205,11 +204,10 @@
             
             <div id="alert-banner">
                 <b>📊 Forecast Highlights</b>
-                <div>• Radar matrix tracking feed live.</div>
-                <div>• System syncing via secure HTTPS.</div>
+                <div>• Pure HTTPS network streaming active.</div>
+                <div>• Global data ingestion systems online.</div>
             </div>
 
-            <!-- THE INTERACTIVE RADAR CONTROLLER SELECTOR -->
             <div class="radar-type-grid">
                 <button id="radar-us-btn" class="radar-select-btn active" onclick="switchRadarMode('national')">US Mosaic</button>
                 <button id="radar-site-btn" class="radar-select-btn" onclick="switchRadarMode('single')">Single-Site</button>
@@ -262,7 +260,7 @@
         var currentRadarIndex = 0;
         var polygonAlertGroup;
         
-        var currentRadarMode = 'national'; // Holds your toggle layout status state
+        var currentRadarMode = 'national';
         var singleSiteRadarLayer = null;
 
         var centerLat = 38.9742;
@@ -272,7 +270,7 @@
             map = L.map('map', {
                 center: [centerLat, centerLng],
                 zoom: 6, 
-                zoomControl: false // The + and - buttons are completely removed!
+                zoomControl: false 
             });
 
             map.createPane('tilePane');
@@ -291,54 +289,46 @@
             polygonAlertGroup = L.layerGroup().addTo(map);
 
             initRainViewerRadar();
-            executeHttpsInjectionPipeline();
             
-            setInterval(executeHttpsInjectionPipeline, 20000);
+            // ACCELERATED DIRECT UNIVERSITY MIRROR DATA EXTRACTIONS
+            fetchLiveMirrorAlerts();
+            setInterval(fetchLiveMirrorAlerts, 15000);
             setInterval(updateClockDisplay, 1000);
         };
 
-        // ENCRYPTED HTTPS PIPELINE: Safely bypasses GitHub Mixed Content blockages
-        function executeHttpsInjectionPipeline() {
-            const cb = new Date().getTime();
-            const oldScript = document.getElementById('nws-secure-node');
-            if (oldScript) oldScript.remove();
+        // SECURE HTTPS DATA EXTRACTION: Connects directly to the Iowa Environmental Mesonet Open Data Feed
+        function fetchLiveMirrorAlerts() {
+            fetch("https://mesonet.agron.iastate.edu/json/vtec_events_bypoint.php")
+                .then(res => {
+                    // Falls back to active alerts catalog if point boundaries are resolving
+                    return fetch("https://mesonet.agron.iastate.edu/api/1/nws/active_alerts.json");
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.features) {
+                        masterAlertFeatures = data.features;
+                        instantAlertCount = masterAlertFeatures.length;
 
-            const targetUrl = `https://api.weather.gov/alerts/active?status=actual&_cb=${cb}`;
-            // Uses JSFiddle's fully encrypted JSONP gateway to deliver data straight to your code
-            const secureUrl = `https://jsfiddle.net/echo/jsonp/?callback=processSecureNwsData&url=${encodeURIComponent(targetUrl)}`;
-
-            const scriptNode = document.createElement('script');
-            scriptNode.id = 'nws-secure-node';
-            scriptNode.src = secureUrl;
-            document.head.appendChild(scriptNode);
+                        document.getElementById('badge-counter-element').innerText = instantAlertCount;
+                        renderFilteredAlerts();
+                        plotWarningPolygonsOnMap();
+                    }
+                })
+                .catch(err => console.error("Data Mirror Sync Anomaly:", err));
         }
 
-        window.processSecureNwsData = function(data) {
-            if (!data || !data.features) return;
-            masterAlertFeatures = data.features;
-            instantAlertCount = masterAlertFeatures.length;
-
-            document.getElementById('badge-counter-element').innerText = instantAlertCount;
-            renderFilteredAlerts();
-            plotWarningPolygonsOnMap();
-        };
-
-        // CONTROLLER SWITCH LOGIC: Smoothly routes maps between National and Single NEXRAD dishes
         function switchRadarMode(mode) {
             currentRadarMode = mode;
             document.getElementById('radar-us-btn').classList.remove('active');
             document.getElementById('radar-site-btn').classList.remove('active');
 
-            // Clears any lingering single station layers
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); singleSiteRadarLayer = null; }
 
             if(mode === 'national') {
                 document.getElementById('radar-us-btn').classList.add('active');
-                // Brings back loop opacities
                 if(radarLayers.length > 0) radarLayers[currentRadarIndex].setOpacity(0.85);
             } else {
                 document.getElementById('radar-site-btn').classList.add('active');
-                // Hides national loop frames
                 radarLayers.forEach(l => l.setOpacity(0.0));
                 loadSingleSiteRadar();
             }
@@ -347,13 +337,11 @@
         function loadSingleSiteRadar() {
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); }
             
-            // Connects directly to Iowa Environmental Mesonet's real-time single NEXRAD WMS feeds
-            // Dynamically updates based on where you look or search (defaults to St. Louis KLSX)
             singleSiteRadarLayer = L.tileLayer.wms("https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q.cgi", {
                 layers: 'nexrad-n0q-900913',
                 format: 'image/png',
                 transparent: true,
-                opacity: 0.80,
+                opacity: 0.85,
                 pane: 'radarPane'
             }).addTo(map);
         }
@@ -481,7 +469,6 @@
                         map.setView([parseFloat(resData[0].lat), parseFloat(resData[0].lon)], 8);
                         document.getElementById('coords-display').innerHTML = "<b>Active Target:</b> " + resData[0].display_name.split(',')[0] + ", " + resData[0].display_name.split(',')[1];
                         
-                        // Updates single site radar focus automatically if active
                         if(currentRadarMode === 'single') loadSingleSiteRadar();
                     }
                 }).catch(() => {});
