@@ -100,6 +100,25 @@
             color: #000;
         }
 
+        .station-selector-wrapper {
+            margin-top: 8px;
+            display: none;
+        }
+        .station-selector-wrapper.visible {
+            display: block;
+        }
+        #radar-station-dropdown {
+            width: 100%;
+            background: #1a1b21;
+            border: 1px solid #00d4ff;
+            color: #fff;
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            outline: none;
+        }
+
         #threat-center-wrapper {
             position: absolute;
             top: 50px;
@@ -215,13 +234,28 @@
             
             <div id="alert-banner">
                 <b>📊 Forecast Highlights</b>
-                <div>• Synchronized sidebar warning layers active.</div>
+                <div>• Single-site radar nodes tracking directly.</div>
                 <div>• Precision network streams deployed.</div>
             </div>
 
             <div class="radar-type-grid">
                 <button id="radar-us-btn" class="radar-select-btn active" onclick="switchRadarMode('national')">US Mosaic</button>
                 <button id="radar-site-btn" class="radar-select-btn" onclick="switchRadarMode('single')">Single-Site</button>
+            </div>
+
+            <!-- SITE STATION TOGGLE COMPONENT -->
+            <div id="station-toggle-box" class="station-selector-wrapper">
+                <select id="radar-station-dropdown" onchange="executeStationChangeToggle()">
+                    <option value="lsx">KLSX - St. Louis, MO</option>
+                    <option value="eax">KEAX - Kansas City, MO</option>
+                    <option value="ilx">KILX - Lincoln/Central IL</option>
+                    <option value="lot">KLOT - Chicago, IL</option>
+                    <option value="dmx">KDMX - Des Moines, IA</option>
+                    <option value="ict">KICT - Wichita, KS</option>
+                    <option value="ohx">KOHX - Nashville, TN</option>
+                    <option value="ama">KAMA - Amarillo, TX</option>
+                    <option value="fwd">KFWD - Dallas, TX</option>
+                </select>
             </div>
 
             <div class="search-container">
@@ -277,7 +311,7 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-   window.onload = function() {
+        window.onload = function() {
             map = L.map('map', {
                 center: [centerLat, centerLng],
                 zoom: 6, 
@@ -305,13 +339,13 @@
             setInterval(loadWeatherAlertPipeline, 30000);
             setInterval(updateClockDisplay, 1000);
 
-            // PASTED HERE:
             document.addEventListener("visibilitychange", function() {
                 if (!document.hidden) {
                     loadWeatherAlertPipeline();
                 }
             });
         };
+
         function loadWeatherAlertPipeline() {
             fetch("https://api.weather.gov/alerts/active?status=actual")
                 .then(response => response.json())
@@ -335,6 +369,7 @@
             currentRadarMode = mode;
             document.getElementById('radar-us-btn').classList.remove('active');
             document.getElementById('radar-site-btn').classList.remove('active');
+            document.getElementById('station-toggle-box').classList.remove('visible');
 
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); singleSiteRadarLayer = null; }
 
@@ -343,6 +378,7 @@
                 if(radarLayers.length > 0) radarLayers[currentRadarIndex].setOpacity(0.85);
             } else {
                 document.getElementById('radar-site-btn').classList.add('active');
+                document.getElementById('station-toggle-box').classList.add('visible');
                 radarLayers.forEach(l => l.setOpacity(0.0));
                 loadSingleSiteRadar();
             }
@@ -351,13 +387,22 @@
         function loadSingleSiteRadar() {
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); }
             
+            // Extracts current active 3-letter station ID dropdown state
+            var selectedStation = document.getElementById('radar-station-dropdown').value;
+            
             singleSiteRadarLayer = L.tileLayer.wms("https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q.cgi", {
-                layers: 'nexrad-n0q-900913',
+                layers: `single-${selectedStation}-n0q`,
                 format: 'image/png',
                 transparent: true,
                 opacity: 0.85,
                 pane: 'radarPane'
             }).addTo(map);
+        }
+
+        function executeStationChangeToggle() {
+            if (currentRadarMode === 'single') {
+                loadSingleSiteRadar();
+            }
         }
 
         function plotWarningPolygonsOnMap() {
