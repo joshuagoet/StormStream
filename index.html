@@ -13,7 +13,7 @@
             height: 100%; 
             overflow: hidden; 
             font-family: Arial, sans-serif; 
-            background-color: #95989b !important; /* Perfect Light Grey Target Workspace Backdrop */
+            background-color: #95989b !important; 
         }
         
         #map { 
@@ -518,12 +518,12 @@
         ];
 
         window.onload = function() {
-            // UNIFIED ZOOM CONSTRAINTS: Safe range limits to prevent framework canvas dropouts
+            // UPDATED: Extended maxZoom threshold to 18 to remove the scale conflict message permanently
             map = L.map('map', {
                 center: [centerLat, centerLng],
                 zoom: 6, 
                 minZoom: 4,
-                maxZoom: 10,
+                maxZoom: 18,
                 zoomControl: false 
             });
 
@@ -537,8 +537,6 @@
             map.createPane('labelsPane');
             map.getPane('labelsPane').style.zIndex = 600;
 
-            // UNLINKED IMAGE DEPENDENCIES: Stripped old CARTO tile layers completely
-            // Instead, we paint an entirely blank canvas frame matching your light grey workspace properties
             var blankCanvasContainer = L.Layer.extend({
                 onAdd: function(map) {
                     map.getContainer().style.background = '#95989b';
@@ -547,17 +545,16 @@
             });
             map.addLayer(new blankCanvasContainer());
 
-            // HIGH-PRECISION TRANSPARENT VECTOR LABELS
-            // Draws thin county/state lines under cells, and floats vector city name labels directly *above* cells
+            // Light vector border and text layouts mapped over the neutral backdrop
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
                 pane: 'tilePane',
-                opacity: 0.18 // Transparent background blending overlay
+                opacity: 0.18 
             }).addTo(map);
 
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
                 pane: 'labelsPane',
                 pointerEvents: 'none',
-                opacity: 0.85 // Crisp solid text contrast overlay
+                opacity: 0.85 
             }).addTo(map);
 
             polygonAlertGroup = L.layerGroup().addTo(map);
@@ -643,6 +640,7 @@
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
 
+            // Calculations for localized 300km box masking area properties surrounding the dome structure
             var deltaOffset = 1.35; 
             var southernLatitude = lat - deltaOffset;
             var northernLatitude = lat + deltaOffset;
@@ -654,12 +652,11 @@
                 [northernLatitude, easternLongitude]
             );
 
-            // True color sync dispatcher: loads the exact same cloud tiles from your mosaic into the crop zone
             singleSiteRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${currentActiveGlobalPath}/256/{z}/{x}/{y}/2/1_1.png`, {
                 opacity: 0.85,
                 pane: 'radarPane',
                 bounds: filterClippingBounds, 
-                maxZoom: 10,
+                maxZoom: 18,
                 cacheBuster: Date.now() 
             }).addTo(map);
 
@@ -757,7 +754,7 @@
                         const radarLayer = L.tileLayer(`https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, {
                             opacity: 0.0, 
                             maxNativeZoom: 7,   
-                            maxZoom: 10,        
+                            maxZoom: 18,        
                             pane: 'radarPane'
                         });
                         radarLayer.addTo(map);
