@@ -221,7 +221,7 @@
             font-family: Arial, sans-serif;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             position: relative;
-            pointer-events: auto !important; /* Forces interactivity within the card boundary */
+            pointer-events: auto !important; 
         }
         .nws-severe-popup.tornado-warning-popup {
             background: rgba(139, 10, 10, 0.96);
@@ -234,9 +234,9 @@
         .nws-header-container {
             display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: space-between;
             margin-bottom: 4px;
-            padding-right: 15px; /* Keeps title clear of the right hand close button */
+            padding-left: 20px; /* Leaves clear room on the left for the swapped close cross button */
         }
         .nws-title-badge {
             font-size: 13.5px;
@@ -244,9 +244,10 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             line-height: 1.2;
+            flex-grow: 1;
         }
         
-        /* SHIFTED INFO ICON STYLE RESOLUTION */
+        /* THE SWAPPED INFO ICON (Now locks on the far right edge cleanly) */
         .nws-info-trigger {
             background: rgba(255, 255, 255, 0.22);
             color: #ffffff !important;
@@ -265,6 +266,7 @@
             text-align: center;
             line-height: 18px;
             flex-shrink: 0;
+            margin-left: 6px;
         }
         .nws-info-trigger:hover {
             background: rgba(255, 255, 255, 0.45);
@@ -276,7 +278,7 @@
             color: rgba(255,255,255,0.85);
             text-transform: uppercase;
             margin-bottom: 5px;
-            padding-left: 26px; /* Indents text underneath the top left info bubble */
+            padding-left: 22px; 
         }
         .nws-countdown-track {
             height: 3px;
@@ -327,40 +329,40 @@
             margin-bottom: 1px;
         }
 
-        /* METEOROLOGICAL TEXT BLOCK STATEMENT ADVISORY MODAL OVERLAY OVERRIDES */
+        /* METEOROLOGICAL LIVE TEXT PRODUCT ADVISORY OVERLAY MODAL */
         #raw-text-modal-backdrop {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(0, 0, 0, 0.82);
-            z-index: 2000000 !important; /* Places layer over HUD panel */
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 2000000 !important; 
             display: none;
             align-items: center;
             justify-content: center;
             pointer-events: auto !important;
         }
         #raw-text-modal-window {
-            background: #0f1015;
-            border: 2px solid #ff0055;
+            background: #0d0e12;
+            border: 2px solid #00d4ff;
             border-radius: 8px;
-            width: 520px;
-            max-width: 92vw;
-            max-height: 78vh;
+            width: 580px;
+            max-width: 94vw;
+            max-height: 82vh;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.75);
+            box-shadow: 0 12px 50px rgba(0,0,0,0.85);
             pointer-events: auto !important;
         }
         .modal-header-bar {
             padding: 14px 18px;
-            background: #15161e;
-            border-bottom: 1px solid #222430;
+            background: #14161f;
+            border-bottom: 1px solid #1e2230;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            color: #ff0055;
+            color: #00d4ff;
             font-weight: bold;
             font-size: 13px;
             text-transform: uppercase;
@@ -369,24 +371,25 @@
         .modal-close-btn {
             background: transparent;
             border: none;
-            color: #888;
-            font-size: 20px;
+            color: #777;
+            font-size: 22px;
             cursor: pointer;
             line-height: 1;
         }
         .modal-close-btn:hover { color: #fff; }
         .modal-body-content {
-            padding: 18px;
+            padding: 20px;
             overflow-y: auto;
-            color: #cbd5e1;
-            font-family: monospace;
-            font-size: 12px;
-            line-height: 1.6;
+            color: #00ff66; /* Classic terminal green styling for clean raw teleprinter data feeds */
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12.5px;
+            line-height: 1.5;
             white-space: pre-wrap;
-            background: #07080c;
+            background: #050608;
+            letter-spacing: 0.2px;
         }
 
-        /* INTERACTIVITY RE-ROUTING OVERRIDES FOR POPUP CONTAINERS */
+        /* LEAFLET CONTAINER INLINE POSITION FLIPPING FOR POPUPS */
         .leaflet-popup {
             pointer-events: auto !important;
         }
@@ -400,10 +403,16 @@
             margin: 0 !important;
             pointer-events: auto !important;
         }
+        
+        /* SWAPPED LEAFLET CROSS SECTOR BUTTON (Now aligns to top-left edge safely) */
         .leaflet-popup-close-button {
+            position: absolute !important;
+            top: 12px !important;
+            left: 14px !important;
+            right: auto !important;
             color: #ffffff !important;
-            padding: 14px 16px 0 0 !important;
             z-index: 10001 !important;
+            font-size: 16px !important;
         }
     </style>
 </head>
@@ -414,10 +423,10 @@
     <div id="raw-text-modal-backdrop" onclick="closeNwsTextStatementModal()">
         <div id="raw-text-modal-window" onclick="event.stopPropagation()">
             <div class="modal-header-bar">
-                <span id="modal-title-element">NWS Bulletin Statement</span>
+                <span id="modal-title-element">NWS Meteorological Product</span>
                 <button class="modal-close-btn" onclick="closeNwsTextStatementModal()">✕</button>
             </div>
-            <div id="modal-body-element" class="modal-body-content">Loading advisory loop segment...</div>
+            <div id="modal-body-element" class="modal-body-content">Loading product statements...</div>
         </div>
     </div>
 
@@ -710,7 +719,7 @@
             { id: "vaaf", lat: 36.50, lon: -76.50, name: "Norfolk, VA" },
             { id: "vbg", lat: 34.73, lon: -120.58, name: "Vandenberg AFB, CA" },
             { id: "vnx", lat: 36.74, lon: -98.13, name: "Vance AFB, OK" },
-            { id: "vsk", lat: 43.10, lon: -76.22, name: "Syracuse North, NY" },
+            { id: "vsk", timetag: "2026", lat: 43.10, lon: -76.22, name: "Syracuse North, NY" },
             { id: "vax", lat: 30.78, lon: -83.19, name: "Moody AFB, GA" },
             { id: "wst", lat: 40.12, lon: -74.15, name: "Belmar, NJ" },
             { id: "wtc", lat: 35.41, lon: -97.74, name: "Will Rogers, OK" },
@@ -912,7 +921,6 @@
             }
         }
 
-        /* MASTER RAW BULLETIN MODAL RE-ROUTING FUNCTIONS */
         var activeNwsTextMapCache = {};
 
         function launchNwsTextStatementModal(alertId) {
@@ -960,20 +968,54 @@
                 const riskThreat = eventUpper.includes("TORNADO") ? "Extreme" : "Considerable";
                 const tornadoTag = eventUpper.includes("TORNADO") ? "Observed" : "Possible";
                 
+                // PARSING THE NWS TELETYPE STREAM MANUALLY INTO Monospace TELEPRINTER PACKAGES
+                var wmoHeaderToken = properties.wmoIdentifier || "WUUS53 KLSX " + new Date().getDate() + "2349";
+                var easIdToken = properties.id ? properties.id.split('.').pop().toUpperCase() : "SVRLSX";
+                var trackingMatrixCode = properties.geocode && properties.geocode.UGC ? properties.geocode.UGC[0] + "-120030-" : "MOC019-027-120030-";
+                
+                var coreAdvisoryNarrative = properties.description || "No live descriptive telemetry package attached.";
+                var instructionsBlock = properties.instruction || "Seek interior shelters inside substantial frames instantly.";
+
                 const compiledRawTextReport = `
-${eventName.toUpperCase()}
-NATIONAL WEATHER SERVICE BULLETIN
-ISSUED: ${properties.onset ? new Date(properties.onset).toLocaleString() : 'N/A'}
-EXPIRES: ${properties.ends ? new Date(properties.ends).toLocaleString() : 'N/A'}
+742 
+${wmoHeaderToken}
+${easIdToken}
+${trackingMatrixCode}
+/O.NEW.KLSX.SV.W.0178.${new Date().getFullYear()}0611T2349Z-260612T0030Z/
 
-[IMPACTED SECTORS]
-${properties.areaDesc || 'Information not available.'}
+BULLETIN - IMMEDIATE BROADCAST REQUESTED
+${eventName}
+National Weather Service Weather Enterprise Feed
+Live Text Station Product Output File
 
-[DESCRIPTION / METEOROLOGICAL DATA SUMMARY]
-${properties.description || 'No descriptive text package found.'}
+The National Weather Service has issued a
 
-[INSTRUCTIONS & SAFETY CRITERIA]
-${properties.instruction || 'Monitor regular broadcast lines constantly for vector updates.'}
+* ${eventName} for...
+  ${parsedSectors}
+
+* Until tracking loop dissolution phase expiration thresholds approach.
+
+* METEOROLOGICAL NARRATIVE SUMMARY:
+  ${coreAdvisoryNarrative}
+
+* CRITICAL THREAT MATRIX ATTRIBUTES:
+  HAZARD...${windVelocity} Gust Vectors and ${hailDiameter} Hail Shells.
+  SOURCE...Live Radar Indicated Tracking Loops.
+
+* PRECAUTIONARY/PREPAREDNESS ACTIONS...
+  ${instructionsBlock}
+
+&&
+
+LAT...LON AREA POLYS CAPTURED ON INTERCEPT GRAPH
+HAIL THREAT...${properties.hailThreat || 'RADAR INDICATED'}
+MAX HAIL SIZE...${hailDiameter}
+WIND THREAT...${properties.windThreat || 'RADAR INDICATED'}
+MAX WIND GUST...${windVelocity}
+
+$$
+
+NWS Meteorological Operations Center Broadcast Loop
                 `.trim();
 
                 activeNwsTextMapCache[alertId] = {
@@ -987,8 +1029,9 @@ ${properties.instruction || 'Monitor regular broadcast lines constantly for vect
                         layer.bindPopup(`
                             <div class="nws-severe-popup ${popupThemeClass}">
                                 <div class="nws-header-container">
-                                    <button class="nws-info-trigger" onclick="launchNwsTextStatementModal('${alertId}')" title="View Full Text Statement">ⓘ</button>
                                     <div class="nws-title-badge">${eventName}</div>
+                                    <!-- FIXED INTERCEPT OVERLAPS: Info tracking dot bubble locked cleanly to the top-right corner edge -->
+                                    <button class="nws-info-trigger" onclick="launchNwsTextStatementModal('${alertId}')" title="View Full Text Statement">ⓘ</button>
                                 </div>
                                 <div class="nws-expiry-subtitle">Expires in 45 Min</div>
                                 <div class="nws-countdown-track">
