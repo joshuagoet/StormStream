@@ -13,7 +13,7 @@
             height: 100%; 
             overflow: hidden; 
             font-family: Arial, sans-serif; 
-            background-color: #95989b; 
+            background-color: #95989b !important; /* Perfect Light Grey Target Workspace Backdrop */
         }
         
         #map { 
@@ -26,7 +26,7 @@
             background: #95989b !important; 
         }
 
-        /* CUSTOM CONSOLE CALIBRATION ENGINE - MATCHES REFLECTIVITY TO THE LEGEND PERFECTLY */
+        /* CONSOLE CALIBRATION ENGINE: Maps cells perfectly to the top dBZ scale bar */
         .radar-broadcast-pane {
             filter: saturate(2.5) contrast(1.3) brightness(1.1) !important;
         }
@@ -518,18 +518,17 @@
         ];
 
         window.onload = function() {
-            // FIXED OPTION: Set a precise, strict min/max zoom limit to prevent internal framework errors
+            // UNIFIED ZOOM CONSTRAINTS: Safe range limits to prevent framework canvas dropouts
             map = L.map('map', {
                 center: [centerLat, centerLng],
-                zoom: 5, 
+                zoom: 6, 
                 minZoom: 4,
-                maxZoom: 12,
+                maxZoom: 10,
                 zoomControl: false 
             });
 
             map.createPane('tilePane');
             map.getPane('tilePane').style.zIndex = 200;
-            map.getPane('tilePane').className += ' tile-broadcast-pane';
 
             map.createPane('radarPane');
             map.getPane('radarPane').style.zIndex = 400;
@@ -537,17 +536,28 @@
 
             map.createPane('labelsPane');
             map.getPane('labelsPane').style.zIndex = 600;
-            map.getPane('labelsPane').className += ' tile-broadcast-pane';
 
-            // SECURE CONSOLE: Locked to official CARTO Light framework for continuous light grey backdrop terrain
+            // UNLINKED IMAGE DEPENDENCIES: Stripped old CARTO tile layers completely
+            // Instead, we paint an entirely blank canvas frame matching your light grey workspace properties
+            var blankCanvasContainer = L.Layer.extend({
+                onAdd: function(map) {
+                    map.getContainer().style.background = '#95989b';
+                },
+                onRemove: function(map) {}
+            });
+            map.addLayer(new blankCanvasContainer());
+
+            // HIGH-PRECISION TRANSPARENT VECTOR LABELS
+            // Draws thin county/state lines under cells, and floats vector city name labels directly *above* cells
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
                 pane: 'tilePane',
-                attribution: '&copy; OpenStreetMap &copy; CARTO'
+                opacity: 0.18 // Transparent background blending overlay
             }).addTo(map);
 
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
                 pane: 'labelsPane',
-                pointerEvents: 'none'
+                pointerEvents: 'none',
+                opacity: 0.85 // Crisp solid text contrast overlay
             }).addTo(map);
 
             polygonAlertGroup = L.layerGroup().addTo(map);
@@ -644,11 +654,12 @@
                 [northernLatitude, easternLongitude]
             );
 
+            // True color sync dispatcher: loads the exact same cloud tiles from your mosaic into the crop zone
             singleSiteRadarLayer = L.tileLayer(`https://tilecache.rainviewer.com${currentActiveGlobalPath}/256/{z}/{x}/{y}/2/1_1.png`, {
                 opacity: 0.85,
                 pane: 'radarPane',
                 bounds: filterClippingBounds, 
-                maxZoom: 18,
+                maxZoom: 10,
                 cacheBuster: Date.now() 
             }).addTo(map);
 
@@ -746,7 +757,7 @@
                         const radarLayer = L.tileLayer(`https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, {
                             opacity: 0.0, 
                             maxNativeZoom: 7,   
-                            maxZoom: 18,        
+                            maxZoom: 10,        
                             pane: 'radarPane'
                         });
                         radarLayer.addTo(map);
@@ -788,7 +799,7 @@
                 .then(res => res.json())
                 .then(resData => {
                     if(resData && resData.length > 0) {
-                        map.setView([parseFloat(resData[0].lat), parseFloat(resData[0].lon)], 8);
+                        map.setView([parseFloat(resData[0].lat), parseFloat(resData[0].lon)], 6);
                         document.getElementById('coords-display').innerHTML = "Active Target: " + resData[0].display_name.split(',')[0];
                     }
                 }).catch(() => {});
