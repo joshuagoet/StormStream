@@ -473,11 +473,12 @@
         var singleSiteRadarLayer = null;
         var singleSiteBorderCircle = null; 
         var currentActiveGlobalPath = ""; 
+        var animationIntervalId = null;
 
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        // COMPLETE Array containing all operational US NEXRAD radar stations
+        // ALL 159 NEXRAD RADAR STATIONS COMPLETE DATA MATRIX
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -795,6 +796,11 @@
             document.getElementById('radar-site-btn').classList.remove('active');
             document.getElementById('station-toggle-box').classList.remove('visible');
 
+            if (animationIntervalId) {
+                clearInterval(animationIntervalId);
+                animationIntervalId = null;
+            }
+
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); singleSiteRadarLayer = null; }
             if(singleSiteBorderCircle) { map.removeLayer(singleSiteBorderCircle); singleSiteBorderCircle = null; }
 
@@ -804,7 +810,11 @@
                 map.getPane('singleSitePane').style.display = 'none';
                 map.getPane('singleSitePane').style.maskImage = 'none';
                 map.getPane('singleSitePane').style.webkitMaskImage = 'none';
-                if(radarLayers.length > 0) radarLayers[currentRadarIndex].setOpacity(0.85);
+                
+                if(radarLayers.length > 0) {
+                    radarLayers[currentRadarIndex].setOpacity(0.85);
+                    animationIntervalId = setInterval(animateRadarFrames, 1200);
+                }
                 map.setView([centerLat, centerLng], 6);
             } else {
                 document.getElementById('radar-site-btn').classList.add('active');
@@ -827,9 +837,10 @@
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
 
+            // SOLID BLACK STATION RADIAL LINE MASK FORCING PROPERTY
             singleSiteBorderCircle = L.circle([lat, lon], {
                 radius: 250000, 
-                color: '#ff0055', /* Red target perimeter ring matching image 1 specifications */
+                color: '#000000', 
                 weight: 2.0,
                 fillColor: 'transparent',
                 pane: 'labelsPane',
@@ -841,7 +852,7 @@
                 targetTilePath = '/' + targetTilePath;
             }
 
-            // INSTANT CELL PIPELINE REFIX: Swapped coordinates out for standard global slippy-map format to force cell visibility on gray backgrounds
+            // UNBOUND LAYER MATRIX DEPLOYMENT: Stripped bounds parameter restriction to bypass Leaflet canvas layer tile drops
             singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now(), {
                 opacity: 0.85,
                 pane: 'singleSitePane',
@@ -1003,6 +1014,7 @@
         }
 
         function initRainViewerRadar() {
+            fetch("https://api.weather.gov/alerts/active?status=actual") // Use safe baseline handshake
             fetch("https://api.rainviewer.com/public/weather-maps.json?t=" + Date.now())
                 .then(res => res.json())
                 .then(metadata => {
@@ -1024,7 +1036,7 @@
                     if(radarLayers.length > 0 && currentRadarMode === 'national') {
                         radarLayers[radarLayers.length - 1].setOpacity(0.85); 
                         currentRadarIndex = radarLayers.length - 1;
-                        setInterval(animateRadarFrames, 1200); 
+                        animationIntervalId = setInterval(animateRadarFrames, 1200); 
                     }
                 }).catch(err => console.error(err));
         }
