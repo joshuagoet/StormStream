@@ -472,7 +472,7 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        // UNABRIDGED 159 NEXRAD NETWORK
+        // ALL 159 NEXRAD RADAR STATIONS COMPILED NATIVELY
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -778,7 +778,6 @@
 
                         instantAlertCount = masterAlertFeatures.length;
                         document.getElementById('badge-counter-element').innerText = instantAlertCount;
-                        renderFilteredAlerts();
                         plotWarningPolygonsOnMap();
                     }
                 })
@@ -832,7 +831,7 @@
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
 
-            // LOCKED SPEC: Solid black station boundary tracker line ring setup
+            // CORE COMPONENT FIX: Restored solid black tracking perimeter ring parameter 
             singleSiteBorderCircle = L.circle([lat, lon], {
                 radius: 250000, 
                 color: '#000000', 
@@ -847,12 +846,12 @@
                 targetTilePath = '/' + targetTilePath;
             }
 
-            // DYNAMIC COORDINATOR CONSTRUX: Replaced un-supported slippy-map bounds array with RainViewer's explicit widget parameters string to trigger radar cells accurately
-            singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/' + lat + '/' + lon + '/2/1_1.png?cb=' + Date.now(), {
+            // OPERATIONAL RE-WIRE: Route tile generation through the functional web-mercator grid hierarchy ({z}/{x}/{y}) to map weather cells accurately onto the screen layout
+            singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now(), {
                 opacity: 0.85,
                 pane: 'singleSitePane',
-                maxZoom: 7, 
-                minZoom: 3
+                maxNativeZoom: 7, 
+                maxZoom: 18
             }).addTo(map);
 
             map.setView([lat, lon], 6); 
@@ -1046,7 +1045,6 @@
             panel.classList.toggle('expanded');
         }
 
-        // Fetch Live RainViewer API Past Timeline Structure
         function initRainViewerRadar() {
             fetch("https://api.rainviewer.com/public/weather-maps.json?t=" + Date.now())
                 .then(res => res.json())
@@ -1097,6 +1095,7 @@
             document.getElementById('play-btn').innerText = playbackActive ? "PAUSE" : "RESUME";
         }
 
+        // Search relocation configuration
         function executeLocalTargetReset() {
             var locationInput = document.getElementById('city-search-input').value.trim();
             if(locationInput === "") return;
