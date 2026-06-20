@@ -472,7 +472,7 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        // ALL 159 NEXRAD RADAR STATIONS COMPILED NATIVELY
+        // UNABRIDGED 159 NEXRAD DATA MATRICES
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -699,8 +699,10 @@
             map.getPane('usMosaicPane').className += ' radar-broadcast-pane';
             map.createPane('singleSitePane').style.zIndex = 400;
             map.getPane('singleSitePane').className += ' radar-broadcast-pane';
-            map.createPane('alertsPane').style.zIndex = 500;
-            map.createPane('labelsPane').style.zIndex = 600;
+            
+            // INDEPENDENT INTERACTION PANE FIX: Isolate vectors to independent top-level overlay frame to restore clickable responses cleanly
+            map.createPane('alertsPane').style.zIndex = 700;
+            map.createPane('labelsPane').style.zIndex = 800;
 
             var blankCanvasContainer = L.Layer.extend({
                 onAdd: function(map) {
@@ -831,7 +833,7 @@
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
 
-            // CORE COMPONENT FIX: Restored solid black tracking perimeter ring parameter 
+            // LOCKED SPEC: Solid black radial perimeter outline vector element
             singleSiteBorderCircle = L.circle([lat, lon], {
                 radius: 250000, 
                 color: '#000000', 
@@ -846,7 +848,7 @@
                 targetTilePath = '/' + targetTilePath;
             }
 
-            // OPERATIONAL RE-WIRE: Route tile generation through the functional web-mercator grid hierarchy ({z}/{x}/{y}) to map weather cells accurately onto the screen layout
+            // UNBOUND TILES ENGINE TRICK: Load high-resolution web-mercator loop matrix layers cleanly to fix broken cell views over the grey canvas layer
             singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now(), {
                 opacity: 0.85,
                 pane: 'singleSitePane',
@@ -1007,44 +1009,6 @@
             });
         }
 
-        function renderFilteredAlerts() {
-            const feedContainer = document.getElementById('bulletin-feed-container');
-            if (!feedContainer) return;
-            feedContainer.innerHTML = "";
-
-            let renderedCount = 0;
-            for (let i = 0; i < masterAlertFeatures.length; i++) {
-                if (renderedCount >= 25) break;
-
-                const alertProps = masterAlertFeatures[i].properties;
-                const eventName = alertProps.event || "Hazard Alert";
-                const eventUpper = eventName.toUpperCase();
-                renderedCount++;
-
-                const areaDesc = alertProps.areaDesc || "Regional Sector";
-                const instruction = alertProps.instruction || alertProps.description || "Monitor lines continuously.";
-
-                let textColor = "#a855f7"; 
-                if (eventUpper.includes("TORNADO")) { textColor = "#FF3333"; } 
-                else if (eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM")) { textColor = "#FFAA00"; } 
-                else if (eventUpper.includes("FLOOD")) { textColor = "#00FF00"; }
-
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'bulletin-item';
-                itemDiv.innerHTML = `
-                    <b style="color: ${textColor}; font-size: 11.5px;">⚠️ ${eventName}</b>
-                    <div style="font-size: 10px; color: #fff; font-weight: bold; margin-top: 2px;">Sector: ${areaDesc}</div>
-                    <div class="bulletin-text">${instruction.substring(0, 140)}...</div>
-                `;
-                feedContainer.appendChild(itemDiv);
-            }
-        }
-
-        function toggleAdvisoryWidgetPanel() {
-            const panel = document.getElementById('text-advisory-panel');
-            panel.classList.toggle('expanded');
-        }
-
         function initRainViewerRadar() {
             fetch("https://api.rainviewer.com/public/weather-maps.json?t=" + Date.now())
                 .then(res => res.json())
@@ -1095,7 +1059,6 @@
             document.getElementById('play-btn').innerText = playbackActive ? "PAUSE" : "RESUME";
         }
 
-        // Search relocation configuration
         function executeLocalTargetReset() {
             var locationInput = document.getElementById('city-search-input').value.trim();
             if(locationInput === "") return;
