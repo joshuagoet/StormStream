@@ -291,103 +291,33 @@
             text-transform: uppercase;
         }
 
-        /* SPEC ADAPTED LIVE ALERTS PANEL OVERLAYS (Right Sidebar Layout) */
-        #threat-center-wrapper {
+        /* FLOATING ACTION TOP-RIGHT BADGE COMPONENT */
+        .alerts-badge-container {
             position: fixed;
-            top: 45px;
+            top: 45px; 
             right: 25px;
-            z-index: 999999;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
+            z-index: 9999999;
         }
-
-        /* FLOATING ACTION TOP-RIGHT BADGE COMPONENT WITH SEVERE ALERTS LAYOUT */
-        #hazard-hub-trigger {
+        .alerts-badge {
             background: #ff6600; 
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(255,255,255,0.3);
-            pointer-events: auto;
-            position: relative;
-        }
-        #hazard-hub-trigger span {
             color: #fff;
-            font-size: 18px;
-            font-weight: bold;
-            margin-top: -2px;
-        }
-
-        .alert-counter-badge {
-            background: #ff0055;
-            color: #ffffff;
             font-family: monospace;
             font-weight: bold;
-            font-size: 9px;
-            padding: 2px 5px;
-            border-radius: 10px;
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            border: 1.5px solid #95989b;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            min-width: 15px;
-            text-align: center;
-        }
-
-        #text-advisory-panel {
-            margin-top: 12px;
-            background: rgba(15, 16, 20, 0.96);
-            border: 1px solid #2a2c35;
-            width: 320px;
-            height: 75vh;
-            border-radius: 6px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            display: none;
-            flex-direction: column;
-            pointer-events: auto;
-        }
-        #text-advisory-panel.expanded {
+            font-size: 12px;
+            padding: 6px 10px;
+            border-radius: 20px;
+            box-shadow: 0 0 15px rgba(255, 102, 0, 0.6);
+            border: 1px solid rgba(255,255,255,0.3);
             display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+        .alerts-badge::before {
+            content: "⚠️";
         }
 
-        #text-advisory-panel h2 {
-            margin: 0;
-            padding: 12px;
-            font-size: 13px;
-            color: #66fcf1;
-            text-transform: uppercase;
-            border-bottom: 1px solid #2a2c35;
-            letter-spacing: 0.5px;
-        }
-
-        #bulletin-feed-container {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 10px;
-        }
-
-        .bulletin-item {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.05);
-            padding: 8px;
-            border-radius: 4px;
-            margin-bottom: 8px;
-        }
-        .bulletin-text {
-            font-size: 10.5px;
-            color: #ccc;
-            margin-top: 4px;
-            line-height: 1.4;
-        }
-
-        /* MONOSPACED METEOROLOGICAL MODAL WINDOW */
+        /* RAW METEOROLOGICAL DATA TERMINAL SUMMARY */
         #raw-text-modal-backdrop {
             position: fixed;
             top: 0;
@@ -474,6 +404,10 @@
         </div>
     </div>
 
+    <div class="alerts-badge-container">
+        <div class="alerts-badge" id="badge-counter-element">--</div>
+    </div>
+
     <div style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; pointer-events: none;">
 
         <div id="hud-panel">
@@ -506,18 +440,6 @@
             <div id="playback-bar">
                 <button id="play-btn" onclick="togglePlayback()">PAUSE</button>
                 <div id="time-display">TIME: --:--</div>
-            </div>
-        </div>
-
-        <div id="threat-center-wrapper">
-            <div id="hazard-hub-trigger" onclick="toggleAdvisoryWidgetPanel()">
-                <span>⚠️</span>
-                <div id="badge-counter-element" class="alert-counter-badge">--</div>
-            </div>
-
-            <div id="text-advisory-panel">
-                <h2>Live NWS Alerts Feed</h2>
-                <div id="bulletin-feed-container"></div>
             </div>
         </div>
 
@@ -586,7 +508,6 @@
             map.createPane('alertsPane').style.zIndex = 500;
             map.createPane('labelsPane').style.zIndex = 600;
 
-            // Forced baseline container matching slate grey image
             var blankCanvasContainer = L.Layer.extend({
                 onAdd: function(map) {
                     map.getContainer().style.background = '#95989b';
@@ -595,7 +516,6 @@
             });
             map.addLayer(new blankCanvasContainer());
 
-            // Low-opacity base vectors over grey fill
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
                 pane: 'tilePane',
                 opacity: 0.18,
@@ -664,7 +584,6 @@
 
                         instantAlertCount = masterAlertFeatures.length;
                         document.getElementById('badge-counter-element').innerText = instantAlertCount;
-                        renderFilteredAlerts();
                         plotWarningPolygonsOnMap();
                     }
                 })
@@ -724,9 +643,12 @@
                 [lat + offsetPaddingLat, lon + offsetPaddingLng]
             );
 
+            // TIMESTAMPMATRIX RE-WIRING: Sync tile path parameters natively with currentActiveGlobalPath to prevent server dropouts
             var targetTilePath = currentActiveGlobalPath ? currentActiveGlobalPath : "/v2/radar/nowcast";
+            if (!targetTilePath.startsWith('/')) {
+                targetTilePath = '/' + targetTilePath;
+            }
 
-            // RESOLVED LAYER PARAMETERS: Updated trailing option codes to dynamic standard format `/256/{z}/{x}/{y}/2/1_1.png` to fix single-site query authorization checks
             singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now(), {
                 opacity: 0.85,
                 pane: 'singleSitePane',
@@ -888,53 +810,16 @@
             });
         }
 
-        function renderFilteredAlerts() {
-            const feedContainer = document.getElementById('bulletin-feed-container');
-            if (!feedContainer) return;
-            feedContainer.innerHTML = "";
-
-            let renderedCount = 0;
-            for (let i = 0; i < masterAlertFeatures.length; i++) {
-                if (renderedCount >= 25) break;
-
-                const alertProps = masterAlertFeatures[i].properties;
-                const eventName = alertProps.event || "Hazard Alert";
-                const eventUpper = eventName.toUpperCase();
-                renderedCount++;
-
-                const areaDesc = alertProps.areaDesc || "Regional Sector";
-                const instruction = alertProps.instruction || alertProps.description || "Monitor lines continuously.";
-
-                let textColor = "#a855f7"; 
-                if (eventUpper.includes("TORNADO")) { textColor = "#FF3333"; } 
-                else if (eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM")) { textColor = "#FFAA00"; } 
-                else if (eventUpper.includes("FLOOD")) { textColor = "#00FF00"; }
-
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'bulletin-item';
-                itemDiv.innerHTML = `
-                    <b style="color: ${textColor}; font-size: 11.5px;">⚠️ ${eventName}</b>
-                    <div style="font-size: 10px; color: #fff; font-weight: bold; margin-top: 2px;">Sector: ${areaDesc}</div>
-                    <div class="bulletin-text">${instruction.substring(0, 140)}...</div>
-                `;
-                feedContainer.appendChild(itemDiv);
-            }
-        }
-
-        function toggleAdvisoryWidgetPanel() {
-            const panel = document.getElementById('text-advisory-panel');
-            panel.classList.toggle('expanded');
-        }
-
         function initRainViewerRadar() {
             fetch("https://api.rainviewer.com/public/weather-maps.json?t=" + Date.now())
                 .then(res => res.json())
                 .then(metadata => {
                     const displayFrames = metadata.radar.past.slice(-5); 
-                    currentActiveGlobalPath = displayFrames[displayFrames.length - 1].path;
+                    // Dynamic assignment extraction fix to guarantee global single-site query safety path
+                    const newestFrame = displayFrames[displayFrames.length - 1];
+                    currentActiveGlobalPath = newestFrame.path;
 
                     displayFrames.forEach((frame) => {
-                        // RESOLVED LAYER PARAMETERS: Synchronized past frame loops to match standard format parameters
                         const radarLayer = L.tileLayer('https://tilecache.rainviewer.com' + frame.path + '/256/{z}/{x}/{y}/2/1_1.png', {
                             opacity: 0.0, 
                             maxNativeZoom: 7,   
