@@ -392,8 +392,10 @@
 </head>
 <body>
 
+    <!-- Primary Base Layer Map Canvas -->
     <div id="map"></div>
 
+    <!-- Meteorological Text Summary Popup Structure -->
     <div id="raw-text-modal-backdrop" onclick="closeNwsTextStatementModal()">
         <div id="raw-text-modal-window" onclick="event.stopPropagation()">
             <div class="modal-header-bar">
@@ -404,10 +406,12 @@
         </div>
     </div>
 
+    <!-- Floating Action Top-Right Component Indicator -->
     <div class="alerts-badge-container">
         <div class="alerts-badge" id="badge-counter-element">--</div>
     </div>
 
+    <!-- HUD Control Framework overlay element -->
     <div style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; pointer-events: none;">
 
         <div id="hud-panel">
@@ -443,6 +447,7 @@
             </div>
         </div>
 
+        <!-- Upper Signal Spectrum DBZ Legend -->
         <div id="dbz-legend">
             <div style="width: 100vw;">
                 <div class="gradient-bar"></div>
@@ -454,6 +459,7 @@
 
     </div>
 
+    <!-- Leaflet Infrastructure Engine Scripts -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
         var map;
@@ -471,7 +477,7 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        // ALL 159 NEXRAD RADAR STATIONS NATIVELY COMPILED
+        // COMPLETE Array containing all operational US NEXRAD radar stations
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -777,7 +783,6 @@
 
                         instantAlertCount = masterAlertFeatures.length;
                         document.getElementById('badge-counter-element').innerText = instantAlertCount;
-                        renderFilteredAlerts();
                         plotWarningPolygonsOnMap();
                     }
                 })
@@ -824,7 +829,7 @@
 
             singleSiteBorderCircle = L.circle([lat, lon], {
                 radius: 250000, 
-                color: '#1a1b21',
+                color: '#ff0055', /* Red target perimeter ring matching image 1 specifications */
                 weight: 2.0,
                 fillColor: 'transparent',
                 pane: 'labelsPane',
@@ -836,12 +841,12 @@
                 targetTilePath = '/' + targetTilePath;
             }
 
-            // CRITICAL ENGINE REFIX: Re-architected standard TileLayer string to parse coordinates via RainViewer's specific Lat/Lon directory parsing matrix
-            singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/' + lat + '/' + lon + '/2/1_1.png?cb=' + Date.now(), {
+            // INSTANT CELL PIPELINE REFIX: Swapped coordinates out for standard global slippy-map format to force cell visibility on gray backgrounds
+            singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now(), {
                 opacity: 0.85,
                 pane: 'singleSitePane',
-                maxZoom: 7,
-                minZoom: 3
+                maxNativeZoom: 7, 
+                maxZoom: 18
             }).addTo(map);
 
             map.setView([lat, lon], 6); 
@@ -864,7 +869,7 @@
 
             var paneElement = map.getPane('singleSitePane');
             if (paneElement) {
-                var gradientMaskString = 'radial-gradient(circle ' + liveRadiusPixels + 'px at ' + centerPointCoordinates.x + 'px ' + centerPointCoordinates.y + 'px, rgba(0,0,0,1) 80%, rgba(0,0,0,0.3) 93%, rgba(0,0,0,0) 100%)';
+                var gradientMaskString = 'radial-gradient(circle ' + liveRadiusPixels + 'px at ' + centerPointCoordinates.x + 'px ' + centerPointCoordinates.y + 'px, rgba(0,0,0,1) 100%, rgba(0,0,0,0) 100%)';
                 paneElement.style.maskImage = gradientMaskString;
                 paneElement.style.webkitMaskImage = gradientMaskString;
             }
@@ -995,44 +1000,6 @@
                     }
                 }).addTo(polygonAlertGroup);
             });
-        }
-
-        function renderFilteredAlerts() {
-            const feedContainer = document.getElementById('bulletin-feed-container');
-            if (!feedContainer) return;
-            feedContainer.innerHTML = "";
-
-            let renderedCount = 0;
-            for (let i = 0; i < masterAlertFeatures.length; i++) {
-                if (renderedCount >= 25) break;
-
-                const alertProps = masterAlertFeatures[i].properties;
-                const eventName = alertProps.event || "Hazard Alert";
-                const eventUpper = eventName.toUpperCase();
-                renderedCount++;
-
-                const areaDesc = alertProps.areaDesc || "Regional Sector";
-                const instruction = alertProps.instruction || alertProps.description || "Monitor lines continuously.";
-
-                let textColor = "#a855f7"; 
-                if (eventUpper.includes("TORNADO")) { textColor = "#FF3333"; } 
-                else if (eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM")) { textColor = "#FFAA00"; } 
-                else if (eventUpper.includes("FLOOD")) { textColor = "#00FF00"; }
-
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'bulletin-item';
-                itemDiv.innerHTML = `
-                    <b style="color: ${textColor}; font-size: 11.5px;">⚠️ ${eventName}</b>
-                    <div style="font-size: 10px; color: #fff; font-weight: bold; margin-top: 2px;">Sector: ${areaDesc}</div>
-                    <div class="bulletin-text">${instruction.substring(0, 140)}...</div>
-                `;
-                feedContainer.appendChild(itemDiv);
-            }
-        }
-
-        function toggleAdvisoryWidgetPanel() {
-            const panel = document.getElementById('text-advisory-panel');
-            panel.classList.toggle('expanded');
         }
 
         function initRainViewerRadar() {
