@@ -6,6 +6,7 @@
     <title>StormStream</title>    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <style>
+        /* FIX 1: Move the solid grey matte fill color directly to the root body node */
         html, body { 
             margin: 0; 
             padding: 0; 
@@ -16,6 +17,7 @@
             background-color: #95989b !important; 
         }
 
+        /* FIX 2: Set the map background completely transparent so layers stack above the body grey */
         #map { 
             position: absolute; 
             top: 0; 
@@ -23,7 +25,7 @@
             width: 100vw; 
             height: 100vh; 
             z-index: 1; 
-            background: #95989b !important; 
+            background: transparent !important; 
         }
 
         .radar-broadcast-pane {
@@ -185,7 +187,7 @@
 
         /* NWS SEVERE SYSTEM POP-UP TEMPLATES */
         .nws-severe-popup {
-            background: rgba(131, 142, 10, 0.96);
+            background: rgba(15,16,20,0.95);
             border: 2px solid rgba(210, 225, 40, 0.9);
             border-radius: 8px;
             padding: 12px 14px;
@@ -197,11 +199,9 @@
             pointer-events: auto !important; 
         }
         .nws-severe-popup.tornado-warning-popup {
-            background: rgba(139, 10, 10, 0.96);
             border-color: rgba(235, 40, 40, 0.9);
         }
         .nws-severe-popup.flood-warning-popup {
-            background: rgba(10, 100, 40, 0.96);
             border-color: rgba(40, 210, 80, 0.9);
         }
         .nws-header-container {
@@ -380,11 +380,10 @@
             background: #1c263b; 
         }
 
-        /* FIXED POPUP OVERRIDES: Restored Leaflet wrappers to display custom HTML popups over vector loops natively */
+        /* Leaflet Specific Pop-up Wrapper Constraints */
         .leaflet-popup-content-wrapper {
-            background: rgba(15,16,20,0.95) !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
-            border-radius: 8px !important;
+            background: transparent !important;
+            box-shadow: none !important;
             padding: 0 !important;
         }
         .leaflet-popup-content { margin: 0 !important; }
@@ -848,7 +847,7 @@
                 targetTilePath = '/' + targetTilePath;
             }
 
-            // FIXED ROUTE CONSTRUX: Point the engine to standard web-mercator parameters to paint cells smoothly without breaking
+            // FIXED ROUTE CONSTRUX: Revert request directory back to web-mercator grid arrays to prevent 404 handler blockages
             singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now(), {
                 opacity: 0.85,
                 pane: 'singleSitePane',
