@@ -471,7 +471,7 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        // THE MASTER 159 NEXRAD STATION MATRIX DATA ARRAY
+        // ALL 159 NEXRAD RADAR STATIONS NATIVELY COMPILED
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -831,29 +831,20 @@
                 pointerEvents: 'none'
             }).addTo(map);
 
-            var offsetPaddingLat = 4.00; 
-            var offsetPaddingLng = 5.00;
-            var compositeSafeBoundingArea = L.latLngBounds(
-                [lat - offsetPaddingLat, lon - offsetPaddingLng],
-                [lat + offsetPaddingLat, lon + offsetPaddingLng]
-            );
-
-            // FIXED SINGLE SITE DIRECTIVE PATH
             var targetTilePath = currentActiveGlobalPath ? currentActiveGlobalPath : "/v2/radar/nowcast";
             if (!targetTilePath.startsWith('/')) {
                 targetTilePath = '/' + targetTilePath;
             }
 
-            singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now(), {
+            // CRITICAL ENGINE REFIX: Re-architected standard TileLayer string to parse coordinates via RainViewer's specific Lat/Lon directory parsing matrix
+            singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/' + lat + '/' + lon + '/2/1_1.png?cb=' + Date.now(), {
                 opacity: 0.85,
                 pane: 'singleSitePane',
-                bounds: compositeSafeBoundingArea, 
-                maxNativeZoom: 7, 
-                maxZoom: 18
+                maxZoom: 7,
+                minZoom: 3
             }).addTo(map);
 
-            // RENDER FIX: Forced map to Zoom level 7 to compile image files accurately over grey grid coordinates
-            map.setView([lat, lon], 7); 
+            map.setView([lat, lon], 6); 
             document.getElementById('coords-display').innerHTML = "Active Target: " + selectedOption.text.split(' (')[0];
             setTimeout(recalibratePerimeterGradientMask, 80);
         }
@@ -1102,7 +1093,7 @@
                 .then(res => res.json())
                 .then(resData => {
                     if(resData && resData.length > 0) {
-                        map.setView([parseFloat(resData[0].lat), parseFloat(resData[0].lon)], 7);
+                        map.setView([parseFloat(resData[0].lat), parseFloat(resData[0].lon)], 6);
                         document.getElementById('coords-display').innerHTML = "Active Target: " + resData[0].display_name.split(',')[0];
                     }
                 }).catch(() => {});
