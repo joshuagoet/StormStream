@@ -26,7 +26,6 @@
             background: #95989b !important; 
         }
 
-        /* FIXED: Removed color-distorting saturate/brightness filters to display exact NWS DBZ colors matching the legend */
         .radar-broadcast-pane {
             pointer-events: none !important; 
         }
@@ -85,18 +84,6 @@
 
         .brand-container { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
         #hud-panel h1 { margin: 0; font-size: 15px; color: #ff0055; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 900; }
-
-        #coords-display { 
-            margin: 6px 0 8px 0; 
-            font-size: 13px; 
-            font-weight: 900;
-            color: #ffffff !important; 
-            -webkit-text-stroke: 1px #000000; 
-            text-stroke: 1px #000000; 
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: block;
-        }
 
         #alert-banner { 
             background: rgba(30, 41, 59, 0.4); 
@@ -350,6 +337,7 @@
 
     <div id="map"></div>
 
+    <!-- Meteorological Text Summary Popup Structure -->
     <div id="raw-text-modal-backdrop" onclick="closeNwsTextStatementModal()">
         <div id="raw-text-modal-window" onclick="event.stopPropagation()">
             <div class="modal-header-bar">
@@ -360,10 +348,12 @@
         </div>
     </div>
 
+    <!-- Floating Action Top-Right Component Indicator -->
     <div class="alerts-badge-container">
         <div class="alerts-badge" id="badge-counter-element">--</div>
     </div>
 
+    <!-- HUD Control Framework overlay element -->
     <div style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; pointer-events: none;">
 
         <div id="menu-toggle-trigger" onclick="toggleTopLeftControlPanel()">
@@ -408,6 +398,7 @@
             </div>
         </div>
 
+        <!-- Upper Signal Spectrum DBZ Legend -->
         <div id="dbz-legend">
             <div style="width: 100vw;">
                 <div class="gradient-bar"></div>
@@ -486,7 +477,7 @@
             { id: "dlh", lat: 46.84, lon: -92.21, name: "Duluth, MN" },
             { id: "dmx", lat: 41.73, lon: -93.72, name: "Des Moines, IA" },
             { id: "dov", lat: 39.13, lon: -75.47, name: " Dover AFB, DE" },
-            { id: "dpa", lat: 41.91, lon: -88.25, name: "West Chicago, IL" }, // FIXED: Cleaned parsing structure safely
+            { id: "dpa", lat: 41.91, lon: -88.25, name: "West Chicago, IL" },
             { id: "dtw", lat: 42.21, lon: -83.35, name: "Detroit, MI" },
             { id: "dvn", lat: 41.61, lon: -90.58, name: "Davenport, IA" },
             { id: "dyx", lat: 32.44, lon: -99.68, name: "Abilene, TX" },
@@ -765,6 +756,8 @@
             }
         }
 
+        var activeNwsTextMapCache = {};
+
         function loadSingleSiteRadar() {
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); }
             if(singleSiteBorderCircle) { map.removeLayer(singleSiteBorderCircle); }
@@ -790,7 +783,6 @@
                 targetTilePath = '/' + targetTilePath;
             }
 
-            // FIXED ROUTE COLOR MAPPING CODE: Swapped map layout queries to raw /1/ NEXRAD strings to match dBZ colors explicitly
             singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/1/1_1.png?cb=' + Date.now(), {
                 opacity: 0.85,
                 pane: 'singleSitePane',
@@ -799,7 +791,6 @@
             }).addTo(map);
 
             map.setView([lat, lon], 6); 
-            document.getElementById('coords-display').innerHTML = "Active Target: " + selectedOption.text.split(' (')[0];
             setTimeout(recalibratePerimeterGradientMask, 80);
         }
 
@@ -1025,7 +1016,6 @@
                 .then(resData => {
                     if(resData && resData.length > 0) {
                         map.setView([parseFloat(resData[0].lat), parseFloat(resData[0].lon)], 6);
-                        document.getElementById('coords-display').innerHTML = "Active Target: " + resData[0].display_name.split(',')[0];
                     }
                 }).catch(() => {});
         }
