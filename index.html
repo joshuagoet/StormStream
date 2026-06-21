@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StormStream</title>    
+    <!-- Mapbox GL JS Infrastructure Assets -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
     <style>
@@ -350,8 +351,10 @@
 </head>
 <body>
 
+    <!-- Mapbox Map Canvas target -->
     <div id="map"></div>
 
+    <!-- Meteorological Text Summary Popup Structure -->
     <div id="raw-text-modal-backdrop" onclick="closeNwsTextStatementModal()">
         <div id="raw-text-modal-window" onclick="event.stopPropagation()">
             <div class="modal-header-bar">
@@ -362,12 +365,15 @@
         </div>
     </div>
 
+    <!-- Floating Action Top-Right Component Indicator -->
     <div class="alerts-badge-container">
         <div class="alerts-badge" id="badge-counter-element">--</div>
     </div>
 
+    <!-- HUD Control Framework overlay element -->
     <div style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; pointer-events: none;">
 
+        <!-- COLLAPSIBLE MENU TRIGGER BUTTON (Orange Circle, Three Black Lines) -->
         <div id="menu-toggle-trigger" onclick="toggleTopLeftControlPanel()">
             <div class="hamburger-line"></div>
             <div class="hamburger-line"></div>
@@ -407,6 +413,7 @@
             </div>
         </div>
 
+        <!-- Upper Signal Spectrum DBZ Legend -->
         <div id="dbz-legend">
             <div style="width: 100vw;">
                 <div class="gradient-bar"></div>
@@ -419,7 +426,7 @@
     </div>
 
     <script>
-        // ENTER YOUR PERSONAL PUBLIC MAPBOX TOKEN HERE
+        // INSERT YOUR PERSONAL PUBLIC MAPBOX TOKEN KEY ACCESS HERE
         mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';
 
         var playbackActive = true;
@@ -428,12 +435,12 @@
         var radarFramesPaths = [];
         var currentRadarFrameIndex = 0;
         var activeRadarMode = 'national';
-        var loopTimerId = null;
+        var animationIntervalId = null;
 
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        // ALL 159 NEXRAD RADAR STATIONS COMPLETE DATA MATRICES
+        // ALL 159 NEXRAD RADAR STATIONS
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -644,25 +651,23 @@
             { id: "yux", lat: 32.66, lon: -114.61, name: "Yuma, AZ" }
         ];
 
-        var activeNwsTextMapCache = {};
-
         map = new mapboxgl.Map({
             container: 'map',
-            style: 'mapbox://styles/mapbox/light-v11', // Pure Mapbox high-contrast layout vector framework
+            style: 'mapbox://styles/mapbox/light-v11', 
             center: [centerLng, centerLat],
             zoom: 5.5,
             attributionControl: false
         });
 
         map.on('load', function() {
-            // MAPBOX GL MATTE GRAY FORCING PROPERTY: Recolor vectors directly inside the GPU stack
+            // FORCED THE BASE MAP VECTOR PANE COLORS TO GRAY MATTE SOLID
             map.setPaintProperty('background', 'background-color', '#95989b');
             map.setPaintProperty('land', 'background-color', '#95989b');
             
-            // Generate clean raster imagery space sources
+            // Generate active raster imagery cache framework block loops
             map.addSource('rainviewer-mosaic', {
                 type: 'raster',
-                tiles: [],
+                tiles: ['https://tilecache.rainviewer.com/v2/radar/nowcast/256/{x}/{y}/{z}/2/1_1.png'], 
                 tileSize: 256
             });
 
@@ -670,7 +675,7 @@
                 id: 'radar-mosaic-layer',
                 type: 'raster',
                 source: 'rainviewer-mosaic',
-                paint: { 'raster-opacity': 0.0 }
+                paint: { 'raster-opacity': 0.85 }
             });
 
             assembleCompleteNEXRADMenu();
@@ -678,7 +683,12 @@
             loadWeatherAlertPipeline();
         });
 
-        function toggleNwsTextStatementModal(alertId) {
+        function toggleTopLeftControlPanel() {
+            var panel = document.getElementById('hud-panel');
+            panel.classList.toggle('collapsed');
+        }
+
+        function launchNwsTextStatementModal(alertId) {
             var cachedRecord = activeNwsTextMapCache[alertId];
             if (!cachedRecord) return;
             document.getElementById('modal-title-element').innerText = cachedRecord.title.toUpperCase();
@@ -697,7 +707,7 @@
                     if (data && data.features) {
                         masterAlertFeatures = data.features.filter(f => {
                             const ev = (f.properties.event || "").toUpperCase();
-                            return ev.includes("WARNING") && !ev.includes("WATCH") && !ev.includes("ADVISORY");
+                            return ev.includes("WARNING");
                         });
 
                         document.getElementById('badge-counter-element').innerText = masterAlertFeatures.length;
@@ -710,23 +720,17 @@
             if (map.getLayer('nws-warnings-layer')) map.removeLayer('nws-warnings-layer');
             if (map.getSource('nws-warnings-source')) map.removeSource('nws-warnings-source');
 
-            var geojsonWrapper = { type: 'FeatureCollection', features: masterAlertFeatures };
-
             masterAlertFeatures.forEach(f => {
                 var props = f.properties || {};
                 var alertId = props.id || Math.random().toString();
-                var eventUpper = (props.event || "").toUpperCase();
-                var coreAdvisoryNarrative = props.description || "";
-                var dynamicWmoToken = props.wmoIdentifier ? props.wmoIdentifier.trim() : "NWS METEOROLOGICAL REPORT";
-
                 activeNwsTextMapCache[alertId] = {
                     title: props.event,
-                    text: `${dynamicWmoToken}\n\n${coreAdvisoryNarrative.trim()}`
+                    text: `${props.wmoIdentifier || "METEOROLOGICAL OUTLOOK"}\n\n${(props.description || "").trim()}`
                 };
                 f.properties.alertIdToken = alertId; 
             });
 
-            map.addSource('nws-warnings-source', { type: 'geojson', data: geojsonWrapper });
+            map.addSource('nws-warnings-source', { type: 'geojson', data: { type: 'FeatureCollection', features: masterAlertFeatures } });
 
             map.addLayer({
                 id: 'nws-warnings-layer',
@@ -734,9 +738,9 @@
                 source: 'nws-warnings-source',
                 paint: {
                     'fill-color': [
-                        'case',
-                        ['style-spec-case-insensitive-match', ['get', 'event'], 'Tornado Warning'], '#FF0000',
-                        ['style-spec-case-insensitive-match', ['get', 'event'], 'Severe Thunderstorm Warning'], '#FFAA00',
+                        'match', ['get', 'event'],
+                        'Tornado Warning', '#FF0000',
+                        'Severe Thunderstorm Warning', '#FFAA00',
                         '#00FF00'
                     ],
                     'fill-opacity': 0.18,
@@ -744,14 +748,12 @@
                 }
             });
 
-            // Mapbox native mouse layout interception 
             map.on('click', 'nws-warnings-layer', function(e) {
                 if (!e.features || e.features.length === 0) return;
                 var targetFeatureProps = e.features[0].properties;
                 var alertId = targetFeatureProps.alertIdToken;
-                
-                var eventName = targetFeatureProps.event || "Weather Warning";
-                var parsedSectors = (targetFeatureProps.areaDesc || "Regional Sector").split(';')[0];
+                var eventName = targetFeatureProps.event || "Active Warn";
+                var parsedSectors = (targetFeatureProps.areaDesc || "Regional Footprint").split(';')[0];
                 
                 var timeRemainingLabel = "Active Alert";
                 if (targetFeatureProps.ends) {
@@ -787,15 +789,10 @@
 
             if (mode === 'national') {
                 document.getElementById('radar-us-btn').classList.add('active');
-                map.getPane('singleSitePane').style.display = 'none';
-                map.getPane('usMosaicPane').style.display = 'block';
                 animationIntervalId = setInterval(animateRadarMosaicLoopFrames, 1200);
             } else {
                 document.getElementById('radar-site-btn').classList.add('active');
                 document.getElementById('station-toggle-box').classList.add('visible');
-                map.getPane('usMosaicPane').style.display = 'none';
-                map.getPane('singleSitePane').style.display = 'block';
-                map.setPaintProperty('radar-mosaic-layer', 'raster-opacity', 0.0);
                 loadSingleSiteRadar();
             }
         }
@@ -811,27 +808,20 @@
             if (map.getLayer('single-site-circle-layer')) map.removeLayer('single-site-circle-layer');
             if (map.getSource('single-site-circle-source')) map.removeSource('single-site-circle-source');
 
-            // Mapbox Native 250KM Perimeter Target Circle Vector tracking geometry
+            // Draw a precise 250km solid black circle outline polygon 
             var points = 64; var coords = [];
-            var distance = 250; var km = 1000;
-            var ret = [];
-            var distanceX = distance / (111.32 * Math.cos(lat * Math.PI / 180));
-            var distanceY = distance / 110.574;
+            var distanceX = 250 / (111.32 * Math.cos(lat * Math.PI / 180));
+            var distanceY = 250 / 110.574;
 
             for (var i = 0; i < points; i++) {
                 var theta = (i / points) * (2 * Math.PI);
-                var x = lon + distanceX * Math.cos(theta);
-                var y = lat + distanceY * Math.sin(theta);
-                coords.push([x, y]);
+                coords.push([lon + distanceX * Math.cos(theta), lat + distanceY * Math.sin(theta)]);
             }
             coords.push(coords[0]);
 
             map.addSource('single-site-circle-source', {
                 type: 'geojson',
-                data: {
-                    type: 'Feature',
-                    geometry: { type: 'Polygon', coordinates: [coords] }
-                }
+                data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } }
             });
 
             map.addLayer({
@@ -841,14 +831,12 @@
                 paint: { 'line-color': '#000000', 'line-width': 2.0 }
             });
 
-            // FIXED ROUTE PIPELINE STRINGS: Synchronize coordinate parameters flawlessly inside the standard slippy tracking layout
+            // FIXED STRING MATRIX FORCING: Point to unhindered slippy-grid properties directly to render active radar cells inside the black ring overlay specifications
             var targetTilePath = currentActiveGlobalPath ? currentActiveGlobalPath : "/v2/radar/nowcast";
-            var correctedRequestUrl = 'https://tilecache.rainviewer.com' + targetTilePath + '/256/{x}/{y}/{z}/2/1_1.png';
+            var correctedRequestUrl = 'https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now();
 
             map.getSource('rainviewer-mosaic').setTiles([correctedRequestUrl]);
-            map.setPaintProperty('radar-mosaic-layer', 'raster-opacity', 0.85);
-
-            map.flyTo({ center: [lon, lat], zoom: 6.2, duration: 600 });
+            map.flyTo({ center: [lon, lat], zoom: 6.2, duration: 800 });
             document.getElementById('coords-display').innerHTML = "Active Target: " + selectedOption.text.split(' (')[0];
         }
 
@@ -864,9 +852,8 @@
                     currentActiveGlobalPath = radarFramesPaths[radarFramesPaths.length - 1];
 
                     if (radarFramesPaths.length > 0 && activeRadarMode === 'national') {
-                        var initialUrl = 'https://tilecache.rainviewer.com' + currentActiveGlobalPath + '/256/{x}/{y}/{z}/2/1_1.png';
+                        var initialUrl = 'https://tilecache.rainviewer.com' + currentActiveGlobalPath + '/256/{z}/{x}/{y}/2/1_1.png';
                         map.getSource('rainviewer-mosaic').setTiles([initialUrl]);
-                        map.setPaintProperty('radar-mosaic-layer', 'raster-opacity', 0.85);
                         animationIntervalId = setInterval(animateRadarMosaicLoopFrames, 1200);
                     }
                 }).catch(err => console.error(err));
@@ -875,8 +862,7 @@
         function animateRadarMosaicLoopFrames() {
             if (!playbackActive || radarFramesPaths.length === 0 || activeRadarMode !== 'national') return;
             currentRadarFrameIndex = (currentRadarFrameIndex + 1) % radarFramesPaths.length;
-            var path = radarFramesPaths[currentRadarFrameIndex];
-            var loopUrl = 'https://tilecache.rainviewer.com' + path + '/256/{x}/{y}/{z}/2/1_1.png';
+            var loopUrl = 'https://tilecache.rainviewer.com' + radarFramesPaths[currentRadarFrameIndex] + '/256/{z}/{x}/{y}/2/1_1.png';
             map.getSource('rainviewer-mosaic').setTiles([loopUrl]);
         }
 
