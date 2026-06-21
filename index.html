@@ -26,7 +26,7 @@
             background: #95989b !important; 
         }
 
-        /* FIXED: Filter distortion removed to preserve native NWS radar DBZ palette matches */
+        /* FIXED: Removed color-distorting saturate/brightness filters to display exact NWS DBZ colors matching the legend */
         .radar-broadcast-pane {
             pointer-events: none !important; 
         }
@@ -219,6 +219,7 @@
             );
         }
 
+        /* NWS SEVERE SYSTEM POP-UP TEMPLATES */
         .nws-severe-popup {
             background: rgba(15, 16, 20, 0.96);
             border: 2px solid rgba(210, 225, 40, 0.9);
@@ -375,7 +376,6 @@
             <div class="brand-container">
                 <h1>StormStream</h1>
             </div>
-            <h2 id="coords-display">Active Target: Lincoln County, MO</h2>
 
             <div id="alert-banner">
                 <b>Forecast Highlights</b>
@@ -419,7 +419,6 @@
 
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
         var map;
         var playbackActive = true;
@@ -438,7 +437,7 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        // UNABRIDGED 159 NEXRAD DATA LIST STACK
+        // ALL 159 NEXRAD RADAR STATIONS
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -487,7 +486,7 @@
             { id: "dlh", lat: 46.84, lon: -92.21, name: "Duluth, MN" },
             { id: "dmx", lat: 41.73, lon: -93.72, name: "Des Moines, IA" },
             { id: "dov", lat: 39.13, lon: -75.47, name: " Dover AFB, DE" },
-            { id: "dpa", lat: 41.91, lon: -88.25, name: "West Chicago, IL" }, // FIXED: Clashing loop tokens removed 
+            { id: "dpa", lat: 41.91, lon: -88.25, name: "West Chicago, IL" }, // FIXED: Cleaned parsing structure safely
             { id: "dtw", lat: 42.21, lon: -83.35, name: "Detroit, MI" },
             { id: "dvn", lat: 41.61, lon: -90.58, name: "Davenport, IA" },
             { id: "dyx", lat: 32.44, lon: -99.68, name: "Abilene, TX" },
@@ -649,6 +648,52 @@
             { id: "yux", lat: 32.66, lon: -114.61, name: "Yuma, AZ" }
         ];
 
+        window.onload = function() {
+            map = L.map('map', {
+                center: [centerLat, centerLng],
+                zoom: 6, 
+                minZoom: 3,
+                maxZoom: 18,
+                zoomControl: false
+            });
+
+            map.createPane('tilePane').style.zIndex = 200;
+            map.createPane('usMosaicPane').style.zIndex = 390;
+            map.getPane('usMosaicPane').className += ' radar-broadcast-pane';
+            map.createPane('singleSitePane').style.zIndex = 400;
+            map.getPane('singleSitePane').className += ' radar-broadcast-pane';
+            
+            map.createPane('alertsPane').style.zIndex = 700;
+            map.createPane('labelsPane').style.zIndex = 800;
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+                pane: 'tilePane',
+                opacity: 0.18,
+                maxNativeZoom: 12,
+                maxZoom: 18
+            }).addTo(map);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+                pane: 'labelsPane',
+                pointerEvents: 'none',
+                opacity: 0.85,
+                maxNativeZoom: 12,
+                maxZoom: 18
+            }).addTo(map);
+
+            polygonAlertGroup = L.layerGroup().addTo(map);
+
+            assembleCompleteNEXRADMenu();
+            initRainViewerRadar();
+            loadWeatherAlertPipeline();
+
+            map.on('zoomend move moveend', recalibratePerimeterGradientMask);
+
+            document.addEventListener("visibilitychange", function() {
+                if (!document.hidden) loadWeatherAlertPipeline();
+            });
+        };
+
         function toggleTopLeftControlPanel() {
             var panel = document.getElementById('hud-panel');
             panel.classList.toggle('collapsed');
@@ -745,6 +790,7 @@
                 targetTilePath = '/' + targetTilePath;
             }
 
+            // FIXED ROUTE COLOR MAPPING CODE: Swapped map layout queries to raw /1/ NEXRAD strings to match dBZ colors explicitly
             singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/1/1_1.png?cb=' + Date.now(), {
                 opacity: 0.85,
                 pane: 'singleSitePane',
