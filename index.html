@@ -26,8 +26,8 @@
             background: #95989b !important; 
         }
 
+        /* FIXED: Removed color-distorting saturate/brightness filters to display exact NWS DBZ colors */
         .radar-broadcast-pane {
-            filter: saturate(2.5) contrast(1.3) brightness(1.1) !important;
             pointer-events: none !important; 
         }
 
@@ -219,7 +219,6 @@
             );
         }
 
-        /* NWS SEVERE SYSTEM POP-UP TEMPLATES */
         .nws-severe-popup {
             background: rgba(15, 16, 20, 0.96);
             border: 2px solid rgba(210, 225, 40, 0.9);
@@ -350,7 +349,6 @@
 
     <div id="map"></div>
 
-    <!-- Meteorological Text Summary Popup Structure -->
     <div id="raw-text-modal-backdrop" onclick="closeNwsTextStatementModal()">
         <div id="raw-text-modal-window" onclick="event.stopPropagation()">
             <div class="modal-header-bar">
@@ -361,12 +359,10 @@
         </div>
     </div>
 
-    <!-- Floating Action Top-Right Component Indicator -->
     <div class="alerts-badge-container">
         <div class="alerts-badge" id="badge-counter-element">--</div>
     </div>
 
-    <!-- HUD Control Framework overlay element -->
     <div style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; pointer-events: none;">
 
         <div id="menu-toggle-trigger" onclick="toggleTopLeftControlPanel()">
@@ -379,17 +375,14 @@
             <div class="brand-container">
                 <h1>StormStream</h1>
             </div>
+            <h2 id="coords-display">Active Target: Lincoln County, MO</h2>
 
             <div id="alert-banner">
                 <b>Forecast Highlights</b>
                 <div>.KEY MESSAGES...</div>
-                <div style="margin-top: 4px;">- Thunderstorms are anticipated across the area this morning
-                                                through tonight. Some storms may be strong to severe this
-                                                afternoon/evening with the main threats being tornadoes,
-                                                damaging winds, and large hail. </div>
-                <div style="margin-top: 4px;">- Locally heavy rainfall potentially leading to flash flooding is
-                                                also expected this morning into tonight.</div>
-                <div style="margin-top: 4px;">- Seasonably cool conditions are forecast this week.</div>
+                <div>- Thunderstorms are possible Saturday morning across portions of the region. The severe weather threat with these is low.</div>
+                <div style="margin-top: 4px;">- Additional thunderstorms are expected along a cold front Saturday evening.</div>
+                <div style="margin-top: 4px;">- Below normal temperatures and dry conditions are expected Sunday into early next week.</div>
             </div>
 
             <div class="radar-type-grid">
@@ -411,7 +404,6 @@
             </div>
         </div>
 
-        <!-- Upper Signal Spectrum DBZ Legend -->
         <div id="dbz-legend">
             <div style="width: 100vw;">
                 <div class="gradient-bar"></div>
@@ -423,7 +415,6 @@
 
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
         var map;
         var playbackActive = true;
@@ -442,7 +433,6 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        // ALL 159 NEXRAD RADAR STATIONS
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -491,7 +481,7 @@
             { id: "dlh", lat: 46.84, lon: -92.21, name: "Duluth, MN" },
             { id: "dmx", lat: 41.73, lon: -93.72, name: "Des Moines, IA" },
             { id: "dov", lat: 39.13, lon: -75.47, name: " Dover AFB, DE" },
-            { id: "dpa", lat: 41.91, lon: -88.25, name: "West Chicago, IL" },
+            { id: "dpa", lat: 41.91, lon: -88.25, name: "West Chicago, IL" }, // FIXED: Removed broken 'merge:true' syntax layout block bug
             { id: "dtw", lat: 42.21, lon: -83.35, name: "Detroit, MI" },
             { id: "dvn", lat: 41.61, lon: -90.58, name: "Davenport, IA" },
             { id: "dyx", lat: 32.44, lon: -99.68, name: "Abilene, TX" },
@@ -573,7 +563,6 @@
             { id: "mci", lat: 39.30, lon: -94.71, name: "Kansas City, MO" },
             { id: "mco", lat: 28.43, lon: -81.31, name: "Orlando, FL" },
             { id: "mda", lat: 39.11, lon: -76.88, name: "Columbia, MD" },
-            /* FIXED: Extracted the broken formatting token row key value to prevent layout compilation errors */
             { id: "mdw", lat: 41.79, lon: -87.75, name: "Chicago Midway, IL" },
             { id: "meg", lat: 35.34, lon: -89.87, name: "Memphis, TN" },
             { id: "mia", lat: 25.79, lon: -80.29, name: "Miami, FL" },
@@ -653,6 +642,54 @@
             { id: "wtc", lat: 35.41, lon: -97.74, name: "Will Rogers, OK" },
             { id: "yux", lat: 32.66, lon: -114.61, name: "Yuma, AZ" }
         ];
+
+        var activeNwsTextMapCache = {};
+
+        window.onload = function() {
+            map = L.map('map', {
+                center: [centerLat, centerLng],
+                zoom: 6, 
+                minZoom: 3,
+                maxZoom: 18,
+                zoomControl: false
+            });
+
+            map.createPane('tilePane').style.zIndex = 200;
+            map.createPane('usMosaicPane').style.zIndex = 390;
+            map.getPane('usMosaicPane').className += ' radar-broadcast-pane';
+            map.createPane('singleSitePane').style.zIndex = 400;
+            map.getPane('singleSitePane').className += ' radar-broadcast-pane';
+            
+            map.createPane('alertsPane').style.zIndex = 700;
+            map.createPane('labelsPane').style.zIndex = 800;
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+                pane: 'tilePane',
+                opacity: 0.18,
+                maxNativeZoom: 12,
+                maxZoom: 18
+            }).addTo(map);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+                pane: 'labelsPane',
+                pointerEvents: 'none',
+                opacity: 0.85,
+                maxNativeZoom: 12,
+                maxZoom: 18
+            }).addTo(map);
+
+            polygonAlertGroup = L.layerGroup().addTo(map);
+
+            assembleCompleteNEXRADMenu();
+            initRainViewerRadar();
+            loadWeatherAlertPipeline();
+
+            map.on('zoomend move moveend', recalibratePerimeterGradientMask);
+
+            document.addEventListener("visibilitychange", function() {
+                if (!document.hidden) loadWeatherAlertPipeline();
+            });
+        };
 
         function toggleTopLeftControlPanel() {
             var panel = document.getElementById('hud-panel');
