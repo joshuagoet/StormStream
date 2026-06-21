@@ -6,7 +6,7 @@
     <title>StormStream</title>    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <style>
-        /* FIX 1: Move the solid grey matte fill color directly to the root body node */
+        /* Pure CSS Grey Backdrop: Prevents JavaScript canvas rendering blockages */
         html, body { 
             margin: 0; 
             padding: 0; 
@@ -17,7 +17,6 @@
             background-color: #95989b !important; 
         }
 
-        /* FIX 2: Set the map background completely transparent so layers stack above the body grey */
         #map { 
             position: absolute; 
             top: 0; 
@@ -187,7 +186,7 @@
 
         /* NWS SEVERE SYSTEM POP-UP TEMPLATES */
         .nws-severe-popup {
-            background: rgba(15,16,20,0.95);
+            background: rgba(15, 16, 20, 0.95);
             border: 2px solid rgba(210, 225, 40, 0.9);
             border-radius: 8px;
             padding: 12px 14px;
@@ -380,10 +379,11 @@
             background: #1c263b; 
         }
 
-        /* Leaflet Specific Pop-up Wrapper Constraints */
+        /* Leaflet Interactive Bounds Restoration overrides */
         .leaflet-popup-content-wrapper {
-            background: transparent !important;
-            box-shadow: none !important;
+            background: rgba(15,16,20,0.96) !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6) !important;
+            border-radius: 6px !important;
             padding: 0 !important;
         }
         .leaflet-popup-content { margin: 0 !important; }
@@ -473,7 +473,7 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        // ALL 159 NEXRAD RADAR STATIONS COMPLETE DATA MATRICES
+        // COMPREHENSIVE ARRAY LIST CONTAINING ALL 159 NEXRAD RADAR STATIONS
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -687,6 +687,7 @@
         var activeNwsTextMapCache = {};
 
         window.onload = function() {
+            // Map built on a structural transparent backdrop layer
             map = L.map('map', {
                 center: [centerLat, centerLng],
                 zoom: 6, 
@@ -701,16 +702,9 @@
             map.createPane('singleSitePane').style.zIndex = 400;
             map.getPane('singleSitePane').className += ' radar-broadcast-pane';
             
+            // Vector layers isolated safely on top tier frames
             map.createPane('alertsPane').style.zIndex = 700;
             map.createPane('labelsPane').style.zIndex = 800;
-
-            var blankCanvasContainer = L.Layer.extend({
-                onAdd: function(map) {
-                    map.getContainer().style.background = '#95989b';
-                },
-                onRemove: function(map) {}
-            });
-            map.addLayer(new blankCanvasContainer());
 
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
                 pane: 'tilePane',
@@ -833,6 +827,7 @@
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
 
+            // LOCKED SPEC: Solid pure black target station outline circle tracking line ring layout
             singleSiteBorderCircle = L.circle([lat, lon], {
                 radius: 250000, 
                 color: '#000000', 
@@ -847,7 +842,7 @@
                 targetTilePath = '/' + targetTilePath;
             }
 
-            // FIXED ROUTE CONSTRUX: Revert request directory back to web-mercator grid arrays to prevent 404 handler blockages
+            // STANDARDIZED SLIPPY GRID MATRIX DEPLOYMENT: Direct coordinate mapping pulls active precipitation cells immediately
             singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now(), {
                 opacity: 0.85,
                 pane: 'singleSitePane',
