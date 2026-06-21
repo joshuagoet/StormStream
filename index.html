@@ -26,7 +26,6 @@
             background: #95989b !important; 
         }
 
-        /* FIXED LAYER POPUP PRIORITY: Overrides popup panes above HUD overlay elements */
         .leaflet-popup-pane {
             z-index: 10000000 !important;
         }
@@ -39,7 +38,6 @@
             filter: saturate(1.8) contrast(1.5) brightness(0.95) hue-rotate(-5deg) !important;
         }
 
-        /* SCREENSHOT ALIGNED COLLAPSIBLE UI TRIGGERS */
         #menu-toggle-trigger {
             position: fixed;
             top: 50px;
@@ -67,7 +65,6 @@
             border-radius: 2px;
         }
 
-        /* RIGHT ALERTS TOGGLE DRAWER KEY TRIGGER */
         #alerts-sidebar-trigger {
             position: fixed;
             top: 50px;
@@ -88,7 +85,6 @@
             font-size: 20px;
         }
 
-        /* BADGE OVERLAY: Placed over the top-left shoulder of the circle toggle trigger button */
         .alerts-count-oval {
             position: absolute;
             top: -6px;
@@ -255,7 +251,6 @@
             );
         }
 
-        /* COLLAPSIBLE SIDEBAR: SCREENSHOT 2026-06-10 201133.jpg MATCHED FEED DRAWER */
         #right-alerts-sidebar {
             position: fixed;
             top: 105px;
@@ -415,7 +410,6 @@
         </div>
     </div>
 
-    <!-- ALIGNED RIGHT SIDEBAR FEED SYSTEM -->
     <div id="right-alerts-sidebar" class="collapsed">
         <div class="sidebar-header-title">Live NWS Alerts Feed</div>
         <div class="sidebar-counter-box">
@@ -482,7 +476,6 @@
             </div>
         </div>
 
-        <!-- Upper Signal Spectrum DBZ Legend -->
         <div id="dbz-legend">
             <div style="width: 100vw;">
                 <div class="gradient-bar"></div>
@@ -724,13 +717,13 @@
             { id: "yux", lat: 32.66, lon: -114.61, name: "Yuma, AZ" }
         ];
 
-        // MASTER INITIALIZATION SEQUENCE SECURED
         window.onload = function() {
+            // UNBOUNDED INITIALIZATION: Enforces a clean level 18 tracking limit across map lifecycles
             map = L.map('map', {
                 center: [centerLat, centerLng],
                 zoom: 5, 
                 minZoom: 3,
-                maxZoom: 18, // FIXED BOUNDARY CONSTRAINT: Restored tracking bounds to level 18 systemwide
+                maxZoom: 18, 
                 zoomControl: false
             });
 
@@ -763,6 +756,16 @@
             assembleCompleteNEXRADMenu();
             initRainViewerRadar();
             loadWeatherAlertPipeline();
+
+            // AUTOMATED ZOOM SWITCHER: Triggers Single-Site mode when zooming in past level 7 to prevent dropouts
+            map.on('zoomend', function() {
+                var currentLevel = map.getZoom();
+                if (currentLevel > 7 && currentRadarMode === 'national') {
+                    switchRadarMode('single');
+                } else if (currentLevel <= 6 && currentRadarMode === 'single') {
+                    switchRadarMode('national');
+                }
+            });
 
             map.on('zoomend move moveend', recalibratePerimeterGradientMask);
 
@@ -924,7 +927,6 @@
                 maxZoom: 18
             }).addTo(map);
 
-            map.setView([lat, lon], 7); 
             setTimeout(recalibratePerimeterGradientMask, 80);
         }
 
@@ -1084,11 +1086,10 @@
                     currentActiveGlobalPath = radarFramesPaths[radarFramesPaths.length - 1];
 
                     radarFramesPaths.forEach((path) => {
-                        // RE-ROUTED FIXED SPECTRUM AUTO-SCALE ENGINE: Forces tile cache to scale up to level 18 via Leaflet interpolation proxies
                         const radarLayer = L.tileLayer('https://tilecache.rainviewer.com' + path + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now(), {
                             opacity: 0.0, 
-                            maxNativeZoom: 7, // Locks native requests at zoom level 7 to prevent console errors
-                            maxZoom: 18,      // Stretches tiles dynamically on close-up views
+                            maxNativeZoom: 12,   
+                            maxZoom: 18,        
                             pane: 'usMosaicPane' 
                         });
                         radarLayer.addTo(map);
@@ -1096,7 +1097,7 @@
                     });
 
                     if(radarLayers.length > 0 && currentRadarMode === 'national') {
-                        radarLayers[radarLayers.length - 1].setOpacity(0.85); 
+                        radarLayers[currentRadarIndex].setOpacity(0.85); 
                         currentRadarIndex = radarLayers.length - 1;
                         animationIntervalId = setInterval(animateRadarFrames, 1200); 
                     }
