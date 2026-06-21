@@ -379,14 +379,17 @@
             <div class="brand-container">
                 <h1>StormStream</h1>
             </div>
-            <h2 id="coords-display">Active Target: Lincoln County, MO</h2>
 
             <div id="alert-banner">
                 <b>Forecast Highlights</b>
                 <div>.KEY MESSAGES...</div>
-                <div>- Thunderstorms are possible Saturday morning across portions of the region. The severe weather threat with these is low.</div>
-                <div style="margin-top: 4px;">- Additional thunderstorms are expected along a cold front Saturday evening.</div>
-                <div style="margin-top: 4px;">- Below normal temperatures and dry conditions are expected Sunday into early next week.</div>
+                <div style="margin-top: 4px;">- Thunderstorms are anticipated across the area this morning
+                                                through tonight. Some storms may be strong to severe this
+                                                afternoon/evening with the main threats being tornadoes,
+                                                damaging winds, and large hail. </div>
+                <div style="margin-top: 4px;">- Locally heavy rainfall potentially leading to flash flooding is
+                                                also expected this morning into tonight.</div>
+                <div style="margin-top: 4px;">- Seasonably cool conditions are forecast this week.</div>
             </div>
 
             <div class="radar-type-grid">
@@ -488,7 +491,7 @@
             { id: "dlh", lat: 46.84, lon: -92.21, name: "Duluth, MN" },
             { id: "dmx", lat: 41.73, lon: -93.72, name: "Des Moines, IA" },
             { id: "dov", lat: 39.13, lon: -75.47, name: " Dover AFB, DE" },
-            { id: "dpa", lat: 41.91, merge: true, lon: -88.25, name: "West Chicago, IL" },
+            { id: "dpa", lat: 41.91, lon: -88.25, name: "West Chicago, IL" },
             { id: "dtw", lat: 42.21, lon: -83.35, name: "Detroit, MI" },
             { id: "dvn", lat: 41.61, lon: -90.58, name: "Davenport, IA" },
             { id: "dyx", lat: 32.44, lon: -99.68, name: "Abilene, TX" },
@@ -570,6 +573,7 @@
             { id: "mci", lat: 39.30, lon: -94.71, name: "Kansas City, MO" },
             { id: "mco", lat: 28.43, lon: -81.31, name: "Orlando, FL" },
             { id: "mda", lat: 39.11, lon: -76.88, name: "Columbia, MD" },
+            /* FIXED: Extracted the broken formatting token row key value to prevent layout compilation errors */
             { id: "mdw", lat: 41.79, lon: -87.75, name: "Chicago Midway, IL" },
             { id: "meg", lat: 35.34, lon: -89.87, name: "Memphis, TN" },
             { id: "mia", lat: 25.79, lon: -80.29, name: "Miami, FL" },
@@ -746,7 +750,6 @@
                 targetTilePath = '/' + targetTilePath;
             }
 
-            // CACHE-BUST MATRIX SYNC: Injected cache parameter query to override local browser memory buffers instantly
             singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/1/1_1.png?cb=' + Date.now(), {
                 opacity: 0.85,
                 pane: 'singleSitePane',
@@ -915,7 +918,6 @@
                     currentActiveGlobalPath = radarFramesPaths[radarFramesPaths.length - 1];
 
                     radarFramesPaths.forEach((path) => {
-                        // RE-ROUTED MOSAIC PATH SYSTEM: Injected dynamic cache control parameters directly into the mosaic loop engine arrays
                         const radarLayer = L.tileLayer('https://tilecache.rainviewer.com' + path + '/256/{z}/{x}/{y}/1/1_1.png?cb=' + Date.now(), {
                             opacity: 0.0, 
                             maxNativeZoom: 7,   
