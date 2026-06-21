@@ -26,7 +26,7 @@
             background: #95989b !important; 
         }
 
-        /* FIXED POPUP PRIORITY MATRIX: Layer pops cleanly above HUD and side panels */
+        /* FIXED LAYER POPUP PRIORITY: Overrides popup panes above HUD overlay elements */
         .leaflet-popup-pane {
             z-index: 10000000 !important;
         }
@@ -39,7 +39,7 @@
             filter: saturate(1.8) contrast(1.5) brightness(0.95) hue-rotate(-5deg) !important;
         }
 
-        /* LEFT MENU TOGGLE CIRCLE STYLE TRACK */
+        /* SCREENSHOT ALIGNED COLLAPSIBLE UI TRIGGERS */
         #menu-toggle-trigger {
             position: fixed;
             top: 50px;
@@ -67,7 +67,7 @@
             border-radius: 2px;
         }
 
-        /* RIGHT MENU TOGGLE CIRCLE STYLE TRACK */
+        /* RIGHT ALERTS TOGGLE DRAWER KEY TRIGGER */
         #alerts-sidebar-trigger {
             position: fixed;
             top: 50px;
@@ -88,7 +88,7 @@
             font-size: 20px;
         }
 
-        /* RED BADGE OVAL COUNTER: Positioned on the TOP-LEFT shoulder of the right sphere trigger */
+        /* BADGE OVERLAY: Placed over the top-left shoulder of the circle toggle trigger button */
         .alerts-count-oval {
             position: absolute;
             top: -6px;
@@ -255,7 +255,7 @@
             );
         }
 
-        /* COLLAPSIBLE SIDEBAR DRAWER STYLING MATRICES */
+        /* COLLAPSIBLE SIDEBAR: SCREENSHOT 2026-06-10 201133.jpg MATCHED FEED DRAWER */
         #right-alerts-sidebar {
             position: fixed;
             top: 105px;
@@ -399,67 +399,6 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             position: relative;
         }
-
-        #raw-text-modal-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.6); 
-            z-index: 2000000 !important; 
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-        #raw-text-modal-window {
-            background: #1c263b !important; 
-            border: 1px solid #2a364d !important;
-            width: 650px !important;
-            max-width: 94vw;
-            max-height: 80vh !important; 
-            display: flex !important;
-            flex-direction: column !important;
-            box-shadow: 0 15px 50px rgba(0,0,0,0.7) !important;
-            overflow: hidden !important;
-            border-radius: 5px !important; 
-        }
-        .modal-header-bar {
-            padding: 14px 20px;
-            background: #161c2d;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: #ffffff;
-            font-weight: bold;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .modal-close-btn { background: transparent; border: none; color: #8895b3; font-size: 22px; cursor: pointer; line-height: 1; }
-        .modal-close-btn:hover { color: #fff; }
-
-        .modal-body-content {
-            padding: 24px 26px;
-            overflow-y: auto;
-            color: #ffffff; 
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 13px;
-            font-weight: 600;
-            line-height: 1.55;
-            white-space: pre-wrap;
-            background: #1c263b; 
-        }
-
-        .leaflet-popup-content-wrapper {
-            background: rgba(15, 16, 20, 0.95) !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
-            border-radius: 8px !important;
-            padding: 0 !important;
-        }
-        .leaflet-popup-content { margin: 0 !important; }
-        .leaflet-popup-tip-container, .leaflet-popup-close-button { display: none !important; }
     </style>
 </head>
 <body>
@@ -476,7 +415,7 @@
         </div>
     </div>
 
-    <!-- SIDEBAR ACTIVE FEED: Screenshot 2026-06-10 201133.jpg layout matrix -->
+    <!-- ALIGNED RIGHT SIDEBAR FEED SYSTEM -->
     <div id="right-alerts-sidebar" class="collapsed">
         <div class="sidebar-header-title">Live NWS Alerts Feed</div>
         <div class="sidebar-counter-box">
@@ -494,7 +433,6 @@
         <div class="sidebar-scroll-feed" id="sidebar-feed-container"></div>
     </div>
 
-    <!-- UI Interaction layer elements -->
     <div style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; pointer-events: none;">
 
         <div id="menu-toggle-trigger" onclick="toggleTopLeftControlPanel()">
@@ -544,6 +482,7 @@
             </div>
         </div>
 
+        <!-- Upper Signal Spectrum DBZ Legend -->
         <div id="dbz-legend">
             <div style="width: 100vw;">
                 <div class="gradient-bar"></div>
@@ -557,7 +496,6 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
-        // GLOBAL SCOPE SEPARATION TRACKS: Locked safely up top to avoid compiler loop crashes
         var map;
         var playbackActive = true;
         var masterAlertFeatures = [];
@@ -786,13 +724,13 @@
             { id: "yux", lat: 32.66, lon: -114.61, name: "Yuma, AZ" }
         ];
 
-        // MASTER MAP SYNCHRONIZER HOOK: Safely sets up base tracking structures before calling data feeds
+        // MASTER INITIALIZATION SEQUENCE SECURED
         window.onload = function() {
             map = L.map('map', {
                 center: [centerLat, centerLng],
                 zoom: 5, 
                 minZoom: 3,
-                maxZoom: 18, // Enforces high zoom scaling constraints cleanly across map lifecycles
+                maxZoom: 18, // FIXED BOUNDARY CONSTRAINT: Restored tracking bounds to level 18 systemwide
                 zoomControl: false
             });
 
@@ -1146,11 +1084,11 @@
                     currentActiveGlobalPath = radarFramesPaths[radarFramesPaths.length - 1];
 
                     radarFramesPaths.forEach((path) => {
-                        // TILE DELEGATION MATRIX: Implements maxNativeZoom 7 parameters to cleanly pixel-stretch close-ups without error boxes
+                        // RE-ROUTED FIXED SPECTRUM AUTO-SCALE ENGINE: Forces tile cache to scale up to level 18 via Leaflet interpolation proxies
                         const radarLayer = L.tileLayer('https://tilecache.rainviewer.com' + path + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now(), {
                             opacity: 0.0, 
-                            maxNativeZoom: 7,   
-                            maxZoom: 18,        
+                            maxNativeZoom: 7, // Locks native requests at zoom level 7 to prevent console errors
+                            maxZoom: 18,      // Stretches tiles dynamically on close-up views
                             pane: 'usMosaicPane' 
                         });
                         radarLayer.addTo(map);
@@ -1186,11 +1124,6 @@
                 dropdown.appendChild(node);
             });
             dropdown.value = "lsx"; 
-        }
-
-        function togglePlayback() {
-            playbackActive = !playbackActive;
-            document.getElementById('play-btn').innerText = playbackActive ? "PAUSE" : "RESUME";
         }
 
         function executeLocalTargetReset() {
