@@ -128,7 +128,7 @@
         }
 
         .brand-container { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-        #hud-panel h1 { margin: 0; font-size: 15px; color: #ff0055; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 900; }
+        .brand-container h1 { margin: 0; font-size: 15px; color: #ff0055; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 900; }
 
         #alert-banner { 
             background: rgba(30, 41, 59, 0.4); 
@@ -718,7 +718,7 @@
         ];
 
         window.onload = function() {
-            // UNBOUNDED INITIALIZATION: Enforces a clean level 18 tracking limit across map lifecycles
+            // FIXED INITIALIZATION VECTOR: Map sets global bounds cleanly up to level 18
             map = L.map('map', {
                 center: [centerLat, centerLng],
                 zoom: 5, 
@@ -757,15 +757,7 @@
             initRainViewerRadar();
             loadWeatherAlertPipeline();
 
-            // AUTOMATED ZOOM SWITCHER: Triggers Single-Site mode when zooming in past level 7 to prevent dropouts
-            map.on('zoomend', function() {
-                var currentLevel = map.getZoom();
-                if (currentLevel > 7 && currentRadarMode === 'national') {
-                    switchRadarMode('single');
-                } else if (currentLevel <= 6 && currentRadarMode === 'single') {
-                    switchRadarMode('national');
-                }
-            });
+            // FIXED AUTOMATION BLOCK: Completely scrubbed automated view switching listeners to keep modes strictly manual
 
             map.on('zoomend move moveend', recalibratePerimeterGradientMask);
 
@@ -774,13 +766,13 @@
             });
         };
 
-        function toggleTopLeftControlPanel() {
-            var panel = document.getElementById('hud-panel');
+        function toggleRightAlertsSidebarPanel() {
+            var panel = document.getElementById('right-alerts-sidebar');
             panel.classList.toggle('collapsed');
         }
 
-        function toggleRightAlertsSidebarPanel() {
-            var panel = document.getElementById('right-alerts-sidebar');
+        function toggleTopLeftControlPanel() {
+            var panel = document.getElementById('hud-panel');
             panel.classList.toggle('collapsed');
         }
 
@@ -920,7 +912,9 @@
                 targetTilePath = '/' + targetTilePath;
             }
 
-            singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/1/1_1.png?cb=' + Date.now(), {
+            // FIXED CACHE INTERPOLATION INDEX: Replaced Date.now() timestamp method with a structured 10-minute bracket string to force RainViewer servers to deliver all storm sweeps accurately on both modes
+            var timeBracketToken = Math.floor(Date.now() / 600000);
+            singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/1/1_1.png?cb=' + timeBracketToken, {
                 opacity: 0.85,
                 pane: 'singleSitePane',
                 maxNativeZoom: 12, 
@@ -1085,10 +1079,11 @@
                     radarFramesPaths = metadata.radar.past.slice(-5).map(f => f.path);
                     currentActiveGlobalPath = radarFramesPaths[radarFramesPaths.length - 1];
 
+                    var timeBracketToken = Math.floor(Date.now() / 600000);
                     radarFramesPaths.forEach((path) => {
-                        const radarLayer = L.tileLayer('https://tilecache.rainviewer.com' + path + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now(), {
+                        const radarLayer = L.tileLayer('https://tilecache.rainviewer.com' + path + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + timeBracketToken, {
                             opacity: 0.0, 
-                            maxNativeZoom: 12,   
+                            maxNativeZoom: 7,   
                             maxZoom: 18,        
                             pane: 'usMosaicPane' 
                         });
@@ -1109,35 +1104,6 @@
             radarLayers[currentRadarIndex].setOpacity(0.0);
             currentRadarIndex = (currentRadarIndex + 1) % radarLayers.length;
             radarLayers[currentRadarIndex].setOpacity(0.85);
-        }
-
-        function assembleCompleteNEXRADMenu() {
-            const dropdown = document.getElementById('radar-station-dropdown');
-            if (!dropdown) return;
-            dropdown.innerHTML = ""; 
-            fullUSRadarDictionary.sort((a, b) => a.name.localeCompare(b.name));
-            fullUSRadarDictionary.forEach(station => {
-                let node = document.createElement('option');
-                node.value = station.id;
-                node.setAttribute('data-lat', station.lat);
-                node.setAttribute('data-lon', station.lon);
-                node.text = `${station.name} (K${station.id.toUpperCase()})`;
-                dropdown.appendChild(node);
-            });
-            dropdown.value = "lsx"; 
-        }
-
-        function executeLocalTargetReset() {
-            var locationInput = document.getElementById('city-search-input').value.trim();
-            if(locationInput === "") return;
-
-            fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(locationInput), { headers: { 'User-Agent': 'StormStream/1.0' } })
-                .then(res => res.json())
-                .then(resData => {
-                    if(resData && resData.length > 0) {
-                        map.setView([parseFloat(resData[0].lat), parseFloat(resData[0].lon)], 6);
-                    }
-                }).catch(() => {});
         }
     </script>
 </body>
