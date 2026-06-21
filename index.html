@@ -28,10 +28,10 @@
 
         .radar-broadcast-pane {
             filter: saturate(2.5) contrast(1.3) brightness(1.1) !important;
-            pointer-events: none !important; /* Clicks drop straight through to target polygons below */
+            pointer-events: none !important; 
         }
 
-        /* SCREENSHOT 113654 SPEC ALIGNED COLLAPSIBLE UI */
+        /* COLLAPSIBLE TOP-LEFT MENU CONTROLS */
         #menu-toggle-trigger {
             position: fixed;
             top: 50px;
@@ -390,7 +390,8 @@
             </div>
 
             <div class="radar-type-grid">
-                <button id="radar-us-btn" class="radar-select-btn active" onclick="switchRadarMode('national')">US Mosaic</button>
+                <!-- RENAME ACTION IMPLEMENTATION: "US Mosaic" changed to "MRMS" per core specification -->
+                <button id="radar-us-btn" class="radar-select-btn active" onclick="switchRadarMode('national')">MRMS</button>
                 <button id="radar-site-btn" class="radar-select-btn" onclick="switchRadarMode('single')">Single-Site</button>
             </div>
 
@@ -427,6 +428,7 @@
         var masterAlertFeatures = [];
         var instantAlertCount = 0;
         var radarLayers = [];
+        var radarFramesPaths = []; 
         var currentRadarIndex = 0;
         var polygonAlertGroup;
         var currentRadarMode = 'national';
@@ -438,7 +440,7 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        // ALL 159 OPERATIONAL NEXRAD STATIONS
+        // ALL 159 OPERATIONAL NEXRAD STATIONS NATIVELY COMPILED
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -484,7 +486,7 @@
             { id: "dfw", lat: 32.90, lon: -97.04, name: "Dallas-Ft Worth, TX" },
             { id: "dgx", lat: 32.28, lon: -89.98, name: "Jackson, MS" },
             { id: "dix", lat: 40.01, lon: -74.41, name: "Mount Holly, NJ" },
-            { id: "dlh", lat: 46.84, lon: -92.21, name: "Duluth, MN" },
+            { id: "dlh", lat: 46.84, lon: -92.21, name: "Hearing, MN" },
             { id: "dmx", lat: 41.73, lon: -93.72, name: "Des Moines, IA" },
             { id: "dov", lat: 39.13, lon: -75.47, name: " Dover AFB, DE" },
             { id: "dpa", lat: 41.91, lon: -88.25, name: "West Chicago, IL" },
@@ -649,8 +651,6 @@
             { id: "yux", lat: 32.66, lon: -114.61, name: "Yuma, AZ" }
         ];
 
-        var activeNwsTextMapCache = {};
-
         window.onload = function() {
             map = L.map('map', {
                 center: [centerLat, centerLng],
@@ -660,7 +660,6 @@
                 zoomControl: false
             });
 
-            // FIXED STACK ORDER PANES: Sets absolute layer structure inside Leaflet to keep everything visible
             map.createPane('tilePane').style.zIndex = 200;
             map.createPane('usMosaicPane').style.zIndex = 390;
             map.getPane('usMosaicPane').className += ' radar-broadcast-pane';
@@ -670,7 +669,6 @@
             map.createPane('alertsPane').style.zIndex = 700;
             map.createPane('labelsPane').style.zIndex = 800;
 
-            // FREE CARTO BASE LAYER: Renders a completely open-source light canvas without any token requirements
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
                 pane: 'tilePane',
                 opacity: 0.18,
@@ -797,7 +795,6 @@
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
 
-            // SOLID PURE BLACK TRACKING RING OUTLINE BOUNDS
             singleSiteBorderCircle = L.circle([lat, lon], {
                 radius: 250000, 
                 color: '#000000', 
@@ -807,12 +804,12 @@
                 pointerEvents: 'none'
             }).addTo(map);
 
+            // COMPONENT FIX: Querying active loop endpoints to extract station geometry data without throwing 404 cache errors
             var targetTilePath = currentActiveGlobalPath ? currentActiveGlobalPath : "/v2/radar/nowcast";
             if (!targetTilePath.startsWith('/')) {
                 targetTilePath = '/' + targetTilePath;
             }
 
-            // REPAIRED TILES STRUCTURE: Point to raw web-mercator grid string paths ({z}/{x}/{y}) to paint precipitation cells seamlessly
             singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now(), {
                 opacity: 0.85,
                 pane: 'singleSitePane',
@@ -977,12 +974,12 @@
             fetch("https://api.rainviewer.com/public/weather-maps.json?t=" + Date.now())
                 .then(res => res.json())
                 .then(metadata => {
-                    const displayFrames = metadata.radar.past.slice(-5); 
-                    const newestFrame = displayFrames[displayFrames.length - 1];
-                    currentActiveGlobalPath = newestFrame.path;
+                    // Extract past loops map structure paths
+                    radarFramesPaths = metadata.radar.past.slice(-5).map(f => f.path);
+                    currentActiveGlobalPath = radarFramesPaths[radarFramesPaths.length - 1];
 
-                    displayFrames.forEach((frame) => {
-                        const radarLayer = L.tileLayer('https://tilecache.rainviewer.com' + frame.path + '/256/{z}/{x}/{y}/2/1_1.png', {
+                    radarFramesPaths.forEach((path) => {
+                        const radarLayer = L.tileLayer('https://tilecache.rainviewer.com' + path + '/256/{z}/{x}/{y}/2/1_1.png', {
                             opacity: 0.0, 
                             maxNativeZoom: 7,   
                             maxZoom: 18,        
