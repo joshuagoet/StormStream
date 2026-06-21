@@ -340,6 +340,7 @@
 
     <div id="map"></div>
 
+    <!-- Meteorological Text Summary Popup Structure -->
     <div id="raw-text-modal-backdrop" onclick="closeNwsTextStatementModal()">
         <div id="raw-text-modal-window" onclick="event.stopPropagation()">
             <div class="modal-header-bar">
@@ -350,10 +351,12 @@
         </div>
     </div>
 
+    <!-- Floating Action Top-Right Component Indicator -->
     <div class="alerts-badge-container">
         <div class="alerts-badge" id="badge-counter-element">--</div>
     </div>
 
+    <!-- HUD Control Framework overlay element -->
     <div style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; pointer-events: none;">
 
         <div id="menu-toggle-trigger" onclick="toggleTopLeftControlPanel()">
@@ -398,6 +401,7 @@
             </div>
         </div>
 
+        <!-- Upper Signal Spectrum DBZ Legend -->
         <div id="dbz-legend">
             <div style="width: 100vw;">
                 <div class="gradient-bar"></div>
@@ -641,12 +645,12 @@
         ];
 
         window.onload = function() {
-            // FIXED HANDLER MAP HOOKS: Initialized inside strict context windows to run loops immediately
+            // FIXED HANDLER MAP HOOKS: Initialized safely inside structural execution contexts
             map = L.map('map', {
                 center: [centerLat, centerLng],
                 zoom: 5, 
                 minZoom: 3,
-                maxZoom: 18,
+                maxZoom: 7, // FIXED INTERCEPT ceiling: Caps map tracking at zoom 7 while on MRMS view to protect server threads
                 zoomControl: false
             });
 
@@ -679,16 +683,6 @@
             assembleCompleteNEXRADMenu();
             initRainViewerRadar();
             loadWeatherAlertPipeline();
-
-            // AUTOMATED SMART INTERCEPT ENGINE: Listen to manual track zooms to handle view switching automatically
-            map.on('zoomend', function() {
-                var currentLevel = map.getZoom();
-                if (currentLevel > 7 && currentRadarMode === 'national') {
-                    switchRadarMode('single');
-                } else if (currentLevel <= 6 && currentRadarMode === 'single') {
-                    switchRadarMode('national');
-                }
-            });
 
             map.on('zoomend move moveend', recalibratePerimeterGradientMask);
 
@@ -753,9 +747,15 @@
                 map.getPane('singleSitePane').style.maskImage = 'none';
                 map.getPane('singleSitePane').style.webkitMaskImage = 'none';
                 
+                // FIXED BOUNDARY LIMIT: Enforces zoom limits to keep the national mosaic from erroring
+                map.setMaxZoom(7);
+                
                 if(radarLayers.length > 0) {
                     radarLayers[currentRadarIndex].setOpacity(0.85);
                     animationIntervalId = setInterval(animateRadarFrames, 1200);
+                }
+                if (map.getZoom() > 7) {
+                    map.setZoom(7);
                 }
             } else {
                 document.getElementById('radar-site-btn').classList.add('active');
@@ -763,6 +763,9 @@
                 map.getPane('usMosaicPane').style.display = 'none';
                 map.getPane('singleSitePane').style.display = 'block';
                 radarLayers.forEach(l => l.setOpacity(0.0));
+                
+                // UNLOCK ZOOM: Restores full zoom level 18 tracking when switching to high-definition Single-Site code
+                map.setMaxZoom(18);
                 loadSingleSiteRadar();
             }
         }
@@ -792,7 +795,6 @@
                 targetTilePath = '/' + targetTilePath;
             }
 
-            // AUTO LEVEL RENDERING: Native resolution constraints optimized cleanly up to native level 12 to scale smoothly
             singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/1/1_1.png?cb=' + Date.now(), {
                 opacity: 0.85,
                 pane: 'singleSitePane',
@@ -800,6 +802,7 @@
                 maxZoom: 18
             }).addTo(map);
 
+            map.setView([lat, lon], 7); // Center directly on chosen target tower safely
             setTimeout(recalibratePerimeterGradientMask, 80);
         }
 
@@ -970,7 +973,7 @@
                     });
 
                     if(radarLayers.length > 0 && currentRadarMode === 'national') {
-                        radarLayers[radarLayers.length - 1].setOpacity(0.85); 
+                        radarLayers[currentRadarIndex].setOpacity(0.85); 
                         currentRadarIndex = radarLayers.length - 1;
                         animationIntervalId = setInterval(animateRadarFrames, 1200); 
                     }
