@@ -72,7 +72,7 @@
             border-radius: 6px !important; 
             border: 2px solid #ff0055 !important; 
             color: #fff !important; 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important; 
+            box-shadow: 0 4px 20 rgba(0,0,0,0.4) !important; 
             width: 290px !important;
             pointer-events: auto !important; 
             box-sizing: border-box !important;
@@ -210,6 +210,7 @@
             );
         }
 
+        /* SCREENSHOT 2026-06-10 201133.jpg SPEC ALIGNED RIGHT SIDEBAR PANEL */
         #right-alerts-sidebar {
             position: fixed;
             top: 50px;
@@ -293,6 +294,7 @@
             box-sizing: border-box;
         }
 
+        /* ALIGNED FEED ITEM CARDS */
         .sidebar-feed-card {
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             padding: 10px 0;
@@ -310,6 +312,9 @@
             gap: 4px;
         }
         .sidebar-feed-card .card-badge::before { content: "⚠️"; font-size: 10px; }
+        .sidebar-feed-card .card-badge.tornado { color: #ef4444; }
+        .sidebar-feed-card .card-badge.severe { color: #f59e0b; }
+        .sidebar-feed-card .card-badge.flood { color: #10b981; }
         
         .sidebar-feed-card .card-sectors {
             font-size: 10px;
@@ -345,6 +350,8 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             position: relative;
         }
+        .nws-severe-popup.tornado-warning-popup { border-color: rgba(235, 40, 40, 0.9); }
+        .nws-severe-popup.flood-warning-popup { border-color: rgba(40, 210, 80, 0.9); }
         .nws-header-container { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
         .nws-title-badge { font-size: 13.5px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2; flex-grow: 1; }
 
@@ -455,7 +462,7 @@
         </div>
     </div>
 
-    <!-- RIGHT ALERTS FEED SIDEBAR -->
+    <!-- SCREENSHOT 2026-06-10 201133.jpg SPEC ALIGNED NATIVE INTEGRATION ALERTS SIDEBAR -->
     <div id="right-alerts-sidebar">
         <div class="sidebar-header-title">Live NWS Alerts Feed</div>
         <div class="sidebar-counter-box">
@@ -463,14 +470,16 @@
             Live Counter: <span id="sidebar-counter-string">0</span> Active Hazards National
         </div>
         <div class="sidebar-filter-grid">
-            <div class="filter-grid-pill filter-pill-severe">Severe</div>
+            <div class="filter-grid-pill filter-pile-severe">Severe</div>
             <div class="filter-grid-pill filter-pill-winter">Winter</div>
             <div class="filter-grid-pill filter-pill-hydro">Hydro</div>
             <div class="filter-grid-pill filter-pill-nonprecip">Non-Precip</div>
             <div class="filter-grid-pill filter-pill-marine">Marine</div>
             <div class="filter-grid-pill filter-pill-tropical">Tropical</div>
         </div>
-        <div class="sidebar-scroll-feed" id="sidebar-feed-container"></div>
+        <div class="sidebar-scroll-feed" id="sidebar-feed-container">
+            <!-- Dynamic data cards mount explicitly inside here -->
+        </div>
     </div>
 
     <!-- HUD Control Framework overlay element -->
@@ -760,6 +769,52 @@
             { id: "yux", lat: 32.66, lon: -114.61, name: "Yuma, AZ" }
         ];
 
+        window.onload = function() {
+            map = L.map('map', {
+                center: [centerLat, centerLng],
+                zoom: 5, 
+                minZoom: 3,
+                maxZoom: 7, 
+                zoomControl: false
+            });
+
+            map.createPane('tilePane').style.zIndex = 200;
+            map.createPane('usMosaicPane').style.zIndex = 390;
+            map.getPane('usMosaicPane').className += ' radar-broadcast-pane mrms-color-matrix';
+            map.createPane('singleSitePane').style.zIndex = 400;
+            map.getPane('singleSitePane').className += ' radar-broadcast-pane';
+            
+            map.createPane('alertsPane').style.zIndex = 700;
+            map.createPane('labelsPane').style.zIndex = 800;
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+                pane: 'tilePane',
+                opacity: 0.18,
+                maxNativeZoom: 12,
+                maxZoom: 18
+            }).addTo(map);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+                pane: 'labelsPane',
+                pointerEvents: 'none',
+                opacity: 0.85,
+                maxNativeZoom: 12,
+                maxZoom: 18
+            }).addTo(map);
+
+            polygonAlertGroup = L.layerGroup().addTo(map);
+
+            assembleCompleteNEXRADMenu();
+            initRainViewerRadar();
+            loadWeatherAlertPipeline();
+
+            map.on('zoomend move moveend', recalibratePerimeterGradientMask);
+
+            document.addEventListener("visibilitychange", function() {
+                if (!document.hidden) loadWeatherAlertPipeline();
+            });
+        };
+
         function toggleTopLeftControlPanel() {
             var panel = document.getElementById('hud-panel');
             panel.classList.toggle('collapsed');
@@ -788,15 +843,18 @@
                         });
 
                         instantAlertCount = masterAlertFeatures.length;
+                        
+                        // SCREENSHOT FEED SYNCHRONIZATION: Maps metrics directly into right sidebar containers
                         document.getElementById('sidebar-counter-string').innerText = instantAlertCount;
                         rebuildSidebarAlertFeedDOM();
+                        
                         plotWarningPolygonsOnMap();
                     }
                 })
                 .catch(err => console.error(err));
         }
 
-        /* CARD COMPONENT CONACTION ENGINE: Synchronizes card texts to reflect native hexadecimal palette keys directly */
+        /* SCREENSHOT FEED CARD BUILDER MATRIX ENGINE */
         function rebuildSidebarAlertFeedDOM() {
             let container = document.getElementById('sidebar-feed-container');
             if(!container) return;
@@ -815,11 +873,9 @@
                 const sectors = (prop.areaDesc || "Regional Track").split(';')[0];
                 const summary = prop.description || "Product details processing...";
 
-                // REAL METEOROLOGICAL SPEC COLORING BLOCK MATRIX
-                let derivedHexValue = "#a855f7"; 
-                if(eventUpper.includes("TORNADO")) { derivedHexValue = "#FF0000"; }
-                else if(eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM")) { derivedHexValue = "#FFAA00"; }
-                else if(eventUpper.includes("FLOOD")) { derivedHexValue = "#00FF00"; }
+                let badgeClass = "severe";
+                if(eventUpper.includes("TORNADO")) badgeClass = "tornado";
+                if(eventUpper.includes("FLOOD")) badgeClass = "flood";
 
                 let timestampLabel = "Active Track";
                 if(prop.sent) {
@@ -831,7 +887,7 @@
                 cardNode.className = "sidebar-feed-card";
                 cardNode.onclick = () => { launchNwsTextStatementModal(id); };
                 cardNode.innerHTML = `
-                    <div class="card-badge" style="color: ${derivedHexValue} !important;">${eventName}</div>
+                    <div class="card-badge ${badgeClass}">${eventName}</div>
                     <div class="card-sectors">Sector: ${sectors}</div>
                     <div class="card-time">${timestampLabel}</div>
                     <div class="card-narrative">${summary}</div>
@@ -951,7 +1007,6 @@
 
                 if (eventUpper.includes("WATCH") || eventUpper.includes("ADVISORY")) return;
 
-                // FIXED POLYGON MATRIX MAPPER: Forces matching colors to synchronize map layouts with sidebar texts
                 let strokeColor = "#a855f7"; let strokeWeight = 2.0; let fillAlpha = 0.15; 
                 let popupThemeClass = "";
 
@@ -1054,8 +1109,8 @@
                         layer.bindPopup(`
                             <div class="nws-severe-popup ${popupThemeClass}">
                                 <div class="nws-header-container">
-                                    <div class="nws-title-badge" style="color: ${strokeColor} !important;">${eventName}</div>
-                                    <button class="nws-info-trigger" onclick="launchNwsTextStatementModal('${alertId}')">ⓘ</button>
+                                    <div class="nws-title-badge">${eventName}</div>
+                                    <button class="nws-info-trigger" onclick="launchNwsTextStatementModal('${alertId}')" title="View Full Text Product">ⓘ</button>
                                 </div>
                                 <div class="nws-expiry-subtitle">${timeRemainingLabel}</div>
                                 <div class="nws-countdown-track"><div class="nws-countdown-fill"></div></div>
@@ -1110,11 +1165,6 @@
                     String(now.getSeconds()).padStart(2, '0');
             }
         }, 1000);
-
-        function togglePlayback() {
-            playbackActive = !playbackActive;
-            document.getElementById('play-btn').innerText = playbackActive ? "PAUSE" : "RESUME";
-        }
 
         function assembleCompleteNEXRADMenu() {
             const dropdown = document.getElementById('radar-station-dropdown');
