@@ -26,11 +26,7 @@
             z-index: 1; 
         }
 
-        .radar-broadcast-pane {
-            filter: saturate(2.5) contrast(1.3) brightness(1.1) !important;
-        }
-
-        /* COLLAPSIBLE TOP-LEFT MENU CONTROLS */
+        /* SCREENSHOT SPEC SYNCHRONIZED COMPONENT UI */
         #menu-toggle-trigger {
             position: fixed;
             top: 50px;
@@ -56,7 +52,6 @@
             height: 3px;
             background: #000000; 
             border-radius: 2px;
-            transition: all 0.2s ease;
         }
 
         #hud-panel { 
@@ -266,13 +261,7 @@
         .nws-badge-block { background: rgba(0,0,0,0.2); padding: 4px 6px; border-radius: 4px; font-size: 10px; }
         .nws-badge-block span { display: block; color: #aaa; font-size: 8px; text-transform: uppercase; }
 
-        /* FLOATING ACTION TOP-RIGHT BADGE COMPONENT */
-        .alerts-badge-container {
-            position: fixed;
-            top: 45px; 
-            right: 25px;
-            z-index: 9999999;
-        }
+        .alerts-badge-container { position: fixed; top: 45px; right: 25px; z-index: 9999999; }
         .alerts-badge {
             background: #ff6600; 
             color: #fff;
@@ -290,7 +279,6 @@
         }
         .alerts-badge::before { content: "⚠️"; }
 
-        /* RAW METEOROLOGICAL DATA TERMINAL SUMMARY */
         #raw-text-modal-backdrop {
             position: fixed;
             top: 0;
@@ -343,7 +331,6 @@
             background: #1c263b; 
         }
 
-        /* Map Engine Popup Layer Overrides */
         .maplibregl-popup-content {
             background: transparent !important;
             box-shadow: none !important;
@@ -425,7 +412,6 @@
     <script>
         var playbackActive = true;
         var masterAlertFeatures = [];
-        var instantAlertCount = 0;
         var radarFramesPaths = [];
         var currentRadarFrameIndex = 0;
         var activeRadarMode = 'national';
@@ -434,7 +420,7 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        // ALL 159 NEXRAD RADAR STATIONS
+        // UNABRIDGED 159 NEXRAD ARRAY DATA MATRIX
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -647,17 +633,36 @@
 
         var activeNwsTextMapCache = {};
 
-        // INTEGRATED OPEN-SOURCE CLIENT CONSOLE RENDERING MATRIX
+        // V8 HYBRID INFRASTRUCTURE COMPILATION: Loads open vector lines natively to populate the gray map surface immediately
         map = new maplibreGl.Map({
             container: 'map',
             style: {
                 version: 8,
-                sources: {},
+                sources: {
+                    'openmaptiles': {
+                        type: 'vector',
+                        tiles: ['https://api.maptiler.com/tiles/v3/{z}/{x}/{y}.pbf?key=get_your_own_OpZE9Z1A16Zg'] // Public baseline geometry vector handshake string
+                    }
+                },
                 layers: [
                     {
                         id: 'background',
                         type: 'background',
-                        paint: { 'background-color': '#95989b' } // LOCKED SPEC GRAY SHEET CANVASES
+                        paint: { 'background-color': '#95989b' } // Matte gray backsheet matching screenshot 2 specifications
+                    },
+                    {
+                        id: 'waterline',
+                        type: 'fill',
+                        source: 'openmaptiles',
+                        'source-layer': 'water',
+                        paint: { 'fill-color': '#717477' } /* Subdued contrasting ocean lines */
+                    },
+                    {
+                        id: 'boundaries',
+                        type: 'line',
+                        source: 'openmaptiles',
+                        'source-layer': 'boundary',
+                        paint: { 'line-color': '#ffffff', 'line-width': 1.0, 'line-opacity': 0.4 } /* USA political line bounds matrix overlay */
                     }
                 ]
             },
@@ -789,6 +794,9 @@
             if (map.getLayer('single-site-circle-layer')) map.removeLayer('single-site-circle-layer');
             if (map.getSource('single-site-circle-source')) map.removeSource('single-site-circle-source');
 
+            var canvasElement = map.getCanvas();
+            if (canvasElement) { canvasElement.style.maskImage = 'none'; canvasElement.style.webkitMaskImage = 'none'; }
+
             if (mode === 'national') {
                 document.getElementById('radar-us-btn').classList.add('active');
                 map.setPaintProperty('radar-mosaic-layer', 'raster-opacity', 0.85);
@@ -833,7 +841,6 @@
                 paint: { 'line-color': '#000000', 'line-width': 2.0 }
             });
 
-            // FIXED ROUTE SLIPPY MATRIX URL FORMULATION
             var targetTilePath = currentActiveGlobalPath ? currentActiveGlobalPath : "/v2/radar/nowcast";
             var correctedRequestUrl = 'https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now();
 
@@ -841,6 +848,9 @@
             map.setPaintProperty('radar-mosaic-layer', 'raster-opacity', 0.85);
             map.flyTo({ center: [lon, lat], zoom: 6.2, duration: 800 });
             document.getElementById('coords-display').innerHTML = "Active Target: " + selectedOption.text.split(' (')[0];
+            
+            // Recalibrate mask overlay rules cleanly matching vector loops tracking layers
+            setTimeout(recalibratePerimeterGradientMask, 400);
         }
 
         function executeStationChangeToggle() {
@@ -867,6 +877,10 @@
                 canvasElement.style.webkitMaskImage = gradientMaskString;
             }
         }
+
+        // Handle structural view updates dynamically
+        map.on('move', recalibratePerimeterGradientMask);
+        map.on('zoom', recalibratePerimeterGradientMask);
 
         function initRainViewerRadarLoopEngine() {
             fetch("https://api.rainviewer.com/public/weather-maps.json?t=" + Date.now())
