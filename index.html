@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StormStream</title>    
-    <script src="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.js"></script>
-    <link href="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <style>
         html, body { 
             margin: 0; 
@@ -24,9 +23,15 @@
             width: 100vw; 
             height: 100vh; 
             z-index: 1; 
+            background: #95989b !important; 
         }
 
-        /* SCREENSHOT SPEC SYNCHRONIZED COMPONENT UI */
+        .radar-broadcast-pane {
+            filter: saturate(2.5) contrast(1.3) brightness(1.1) !important;
+            pointer-events: none !important; /* Clicks drop straight through to target polygons below */
+        }
+
+        /* SCREENSHOT 113654 SPEC ALIGNED COLLAPSIBLE UI */
         #menu-toggle-trigger {
             position: fixed;
             top: 50px;
@@ -331,18 +336,21 @@
             background: #1c263b; 
         }
 
-        .maplibregl-popup-content {
-            background: transparent !important;
-            box-shadow: none !important;
+        .leaflet-popup-content-wrapper {
+            background: rgba(15, 16, 20, 0.95) !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
+            border-radius: 8px !important;
             padding: 0 !important;
         }
-        .maplibregl-popup-close-button { display: none !important; }
+        .leaflet-popup-content { margin: 0 !important; }
+        .leaflet-popup-tip-container, .leaflet-popup-close-button { display: none !important; }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
 
+    <!-- Meteorological Text Summary Popup Structure -->
     <div id="raw-text-modal-backdrop" onclick="closeNwsTextStatementModal()">
         <div id="raw-text-modal-window" onclick="event.stopPropagation()">
             <div class="modal-header-bar">
@@ -353,10 +361,12 @@
         </div>
     </div>
 
+    <!-- Floating Action Top-Right Component Indicator -->
     <div class="alerts-badge-container">
         <div class="alerts-badge" id="badge-counter-element">--</div>
     </div>
 
+    <!-- HUD Control Framework overlay element -->
     <div style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; pointer-events: none;">
 
         <div id="menu-toggle-trigger" onclick="toggleTopLeftControlPanel()">
@@ -398,6 +408,7 @@
             </div>
         </div>
 
+        <!-- Upper Signal Spectrum DBZ Legend -->
         <div id="dbz-legend">
             <div style="width: 100vw;">
                 <div class="gradient-bar"></div>
@@ -409,18 +420,25 @@
 
     </div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
+        var map;
         var playbackActive = true;
         var masterAlertFeatures = [];
-        var radarFramesPaths = [];
-        var currentRadarFrameIndex = 0;
-        var activeRadarMode = 'national';
+        var instantAlertCount = 0;
+        var radarLayers = [];
+        var currentRadarIndex = 0;
+        var polygonAlertGroup;
+        var currentRadarMode = 'national';
+        var singleSiteRadarLayer = null;
+        var singleSiteBorderCircle = null; 
+        var currentActiveGlobalPath = ""; 
         var animationIntervalId = null;
 
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        // UNABRIDGED 159 NEXRAD ARRAY DATA MATRIX
+        // ALL 159 OPERATIONAL NEXRAD STATIONS
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -633,62 +651,69 @@
 
         var activeNwsTextMapCache = {};
 
-        // V8 HYBRID INFRASTRUCTURE COMPILATION: Loads open vector lines natively to populate the gray map surface immediately
-        map = new maplibreGl.Map({
-            container: 'map',
-            style: {
-                version: 8,
-                sources: {
-                    'openmaptiles': {
-                        type: 'vector',
-                        tiles: ['https://api.maptiler.com/tiles/v3/{z}/{x}/{y}.pbf?key=get_your_own_OpZE9Z1A16Zg'] // Public baseline geometry vector handshake string
-                    }
-                },
-                layers: [
-                    {
-                        id: 'background',
-                        type: 'background',
-                        paint: { 'background-color': '#95989b' } // Matte gray backsheet matching screenshot 2 specifications
-                    },
-                    {
-                        id: 'waterline',
-                        type: 'fill',
-                        source: 'openmaptiles',
-                        'source-layer': 'water',
-                        paint: { 'fill-color': '#717477' } /* Subdued contrasting ocean lines */
-                    },
-                    {
-                        id: 'boundaries',
-                        type: 'line',
-                        source: 'openmaptiles',
-                        'source-layer': 'boundary',
-                        paint: { 'line-color': '#ffffff', 'line-width': 1.0, 'line-opacity': 0.4 } /* USA political line bounds matrix overlay */
-                    }
-                ]
-            },
-            center: [centerLng, centerLat],
-            zoom: 5.5,
-            attributionControl: false
-        });
-
-        map.on('load', function() {
-            map.addSource('rainviewer-mosaic', {
-                type: 'raster',
-                tiles: ['https://tilecache.rainviewer.com/v2/radar/nowcast/256/{z}/{x}/{y}/2/1_1.png'],
-                tileSize: 256
+        window.onload = function() {
+            map = L.map('map', {
+                center: [centerLat, centerLng],
+                zoom: 6, 
+                minZoom: 3,
+                maxZoom: 18,
+                zoomControl: false
             });
 
-            map.addLayer({
-                id: 'radar-mosaic-layer',
-                type: 'raster',
-                source: 'rainviewer-mosaic',
-                paint: { 'raster-opacity': 0.85 }
-            });
+            // FIXED STACK ORDER PANES: Sets absolute layer structure inside Leaflet to keep everything visible
+            map.createPane('tilePane').style.zIndex = 200;
+            map.createPane('usMosaicPane').style.zIndex = 390;
+            map.getPane('usMosaicPane').className += ' radar-broadcast-pane';
+            map.createPane('singleSitePane').style.zIndex = 400;
+            map.getPane('singleSitePane').className += ' radar-broadcast-pane';
+            
+            map.createPane('alertsPane').style.zIndex = 700;
+            map.createPane('labelsPane').style.zIndex = 800;
+
+            // FREE CARTO BASE LAYER: Renders a completely open-source light canvas without any token requirements
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+                pane: 'tilePane',
+                opacity: 0.18,
+                maxNativeZoom: 12,
+                maxZoom: 18
+            }).addTo(map);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+                pane: 'labelsPane',
+                pointerEvents: 'none',
+                opacity: 0.85,
+                maxNativeZoom: 12,
+                maxZoom: 18
+            }).addTo(map);
+
+            polygonAlertGroup = L.layerGroup().addTo(map);
 
             assembleCompleteNEXRADMenu();
-            initRainViewerRadarLoopEngine();
+            initRainViewerRadar();
             loadWeatherAlertPipeline();
-        });
+
+            map.on('zoomend move moveend', recalibratePerimeterGradientMask);
+
+            document.addEventListener("visibilitychange", function() {
+                if (!document.hidden) loadWeatherAlertPipeline();
+            });
+        };
+
+        function assembleCompleteNEXRADMenu() {
+            const dropdown = document.getElementById('radar-station-dropdown');
+            if (!dropdown) return;
+            dropdown.innerHTML = ""; 
+            fullUSRadarDictionary.sort((a, b) => a.name.localeCompare(b.name));
+            fullUSRadarDictionary.forEach(station => {
+                let node = document.createElement('option');
+                node.value = station.id;
+                node.setAttribute('data-lat', station.lat);
+                node.setAttribute('data-lon', station.lon);
+                node.text = `${station.name} (K${station.id.toUpperCase()})`;
+                dropdown.appendChild(node);
+            });
+            dropdown.value = "lsx"; 
+        }
 
         function toggleTopLeftControlPanel() {
             var panel = document.getElementById('hud-panel');
@@ -709,7 +734,7 @@
 
         function loadWeatherAlertPipeline() {
             fetch("https://api.weather.gov/alerts/active?status=actual")
-                .then(res => res.json())
+                .then(response => response.json())
                 .then(data => {
                     if (data && data.features) {
                         masterAlertFeatures = data.features.filter(f => {
@@ -717,98 +742,54 @@
                             return ev.includes("WARNING");
                         });
 
-                        document.getElementById('badge-counter-element').innerText = masterAlertFeatures.length;
+                        instantAlertCount = masterAlertFeatures.length;
+                        document.getElementById('badge-counter-element').innerText = instantAlertCount;
                         plotWarningPolygonsOnMap();
                     }
-                }).catch(err => console.error(err));
-        }
-
-        function plotWarningPolygonsOnMap() {
-            if (map.getLayer('nws-warnings-layer')) map.removeLayer('nws-warnings-layer');
-            if (map.getSource('nws-warnings-source')) map.removeSource('nws-warnings-source');
-
-            masterAlertFeatures.forEach(f => {
-                var props = f.properties || {};
-                var alertId = props.id || Math.random().toString();
-                activeNwsTextMapCache[alertId] = {
-                    title: props.event,
-                    text: `${props.wmoIdentifier || "METEOROLOGICAL OUTLOOK"}\n\n${(props.description || "").trim()}`
-                };
-                f.properties.alertIdToken = alertId; 
-            });
-
-            map.addSource('nws-warnings-source', { type: 'geojson', data: { type: 'FeatureCollection', features: masterAlertFeatures } });
-
-            map.addLayer({
-                id: 'nws-warnings-layer',
-                type: 'fill',
-                source: 'nws-warnings-source',
-                paint: {
-                    'fill-color': [
-                        'match', ['get', 'event'],
-                        'Tornado Warning', '#FF0000',
-                        'Severe Thunderstorm Warning', '#FFAA00',
-                        '#00FF00'
-                    ],
-                    'fill-opacity': 0.18,
-                    'fill-outline-color': '#000000'
-                }
-            });
-
-            map.on('click', 'nws-warnings-layer', function(e) {
-                if (!e.features || e.features.length === 0) return;
-                var targetFeatureProps = e.features[0].properties;
-                var alertId = targetFeatureProps.alertIdToken;
-                var eventName = targetFeatureProps.event || "Active Warn";
-                var parsedSectors = (targetFeatureProps.areaDesc || "Regional Footprint").split(';')[0];
-                
-                var timeRemainingLabel = "Active Alert";
-                if (targetFeatureProps.ends) {
-                    var diff = Math.ceil((new Date(targetFeatureProps.ends).getTime() - Date.now()) / 60000);
-                    if (diff > 0) timeRemainingLabel = `Expires in ${diff} Min`;
-                }
-
-                new maplibreGl.Popup()
-                    .setLngLat(e.lngLat)
-                    .setHTML(`
-                        <div class="nws-severe-popup">
-                            <div class="nws-header-container">
-                                <div class="nws-title-badge">${eventName}</div>
-                                <button class="nws-info-trigger" onclick="launchNwsTextStatementModal('${alertId}')">ⓘ</button>
-                            </div>
-                            <div class="nws-expiry-subtitle">${timeRemainingLabel}</div>
-                            <div class="nws-countdown-track"><div class="nws-countdown-fill"></div></div>
-                            <div class="nws-pill-row"><b>Counties</b>${parsedSectors}</div>
-                        </div>
-                    `).addTo(map);
-            });
+                })
+                .catch(err => console.error(err));
         }
 
         function switchRadarMode(mode) {
-            activeRadarMode = mode;
+            currentRadarMode = mode;
             document.getElementById('radar-us-btn').classList.remove('active');
             document.getElementById('radar-site-btn').classList.remove('active');
             document.getElementById('station-toggle-box').classList.remove('visible');
 
-            if (animationIntervalId) { clearInterval(animationIntervalId); animationIntervalId = null; }
-            if (map.getLayer('single-site-circle-layer')) map.removeLayer('single-site-circle-layer');
-            if (map.getSource('single-site-circle-source')) map.removeSource('single-site-circle-source');
+            if (animationIntervalId) {
+                clearInterval(animationIntervalId);
+                animationIntervalId = null;
+            }
 
-            var canvasElement = map.getCanvas();
-            if (canvasElement) { canvasElement.style.maskImage = 'none'; canvasElement.style.webkitMaskImage = 'none'; }
+            if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); singleSiteRadarLayer = null; }
+            if(singleSiteBorderCircle) { map.removeLayer(singleSiteBorderCircle); singleSiteBorderCircle = null; }
 
-            if (mode === 'national') {
+            if(mode === 'national') {
                 document.getElementById('radar-us-btn').classList.add('active');
-                map.setPaintProperty('radar-mosaic-layer', 'raster-opacity', 0.85);
-                animationIntervalId = setInterval(animateRadarMosaicLoopFrames, 1200);
+                map.getPane('usMosaicPane').style.display = 'block';
+                map.getPane('singleSitePane').style.display = 'none';
+                map.getPane('singleSitePane').style.maskImage = 'none';
+                map.getPane('singleSitePane').style.webkitMaskImage = 'none';
+                
+                if(radarLayers.length > 0) {
+                    radarLayers[currentRadarIndex].setOpacity(0.85);
+                    animationIntervalId = setInterval(animateRadarFrames, 1200);
+                }
+                map.setView([centerLat, centerLng], 6);
             } else {
                 document.getElementById('radar-site-btn').classList.add('active');
                 document.getElementById('station-toggle-box').classList.add('visible');
+                map.getPane('usMosaicPane').style.display = 'none';
+                map.getPane('singleSitePane').style.display = 'block';
+                radarLayers.forEach(l => l.setOpacity(0.0));
                 loadSingleSiteRadar();
             }
         }
 
         function loadSingleSiteRadar() {
+            if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); }
+            if(singleSiteBorderCircle) { map.removeLayer(singleSiteBorderCircle); }
+
             var dropdown = document.getElementById('radar-station-dropdown');
             var selectedOption = dropdown.options[dropdown.selectedIndex];
             if (!selectedOption) return;
@@ -816,92 +797,214 @@
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
 
-            if (map.getLayer('single-site-circle-layer')) map.removeLayer('single-site-circle-layer');
-            if (map.getSource('single-site-circle-source')) map.removeSource('single-site-circle-source');
-
-            var points = 64; var coords = [];
-            var distanceX = 250 / (111.32 * Math.cos(lat * Math.PI / 180));
-            var distanceY = 250 / 110.574;
-
-            for (var i = 0; i < points; i++) {
-                var theta = (i / points) * (2 * Math.PI);
-                coords.push([lon + distanceX * Math.cos(theta), lat + distanceY * Math.sin(theta)]);
-            }
-            coords.push(coords[0]);
-
-            map.addSource('single-site-circle-source', {
-                type: 'geojson',
-                data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } }
-            });
-
-            map.addLayer({
-                id: 'single-site-circle-layer',
-                type: 'line',
-                source: 'single-site-circle-source',
-                paint: { 'line-color': '#000000', 'line-width': 2.0 }
-            });
+            // SOLID PURE BLACK TRACKING RING OUTLINE BOUNDS
+            singleSiteBorderCircle = L.circle([lat, lon], {
+                radius: 250000, 
+                color: '#000000', 
+                weight: 2.0,
+                fillColor: 'transparent',
+                pane: 'labelsPane',
+                pointerEvents: 'none'
+            }).addTo(map);
 
             var targetTilePath = currentActiveGlobalPath ? currentActiveGlobalPath : "/v2/radar/nowcast";
-            var correctedRequestUrl = 'https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now();
+            if (!targetTilePath.startsWith('/')) {
+                targetTilePath = '/' + targetTilePath;
+            }
 
-            map.getSource('rainviewer-mosaic').setTiles([correctedRequestUrl]);
-            map.setPaintProperty('radar-mosaic-layer', 'raster-opacity', 0.85);
-            map.flyTo({ center: [lon, lat], zoom: 6.2, duration: 800 });
+            // REPAIRED TILES STRUCTURE: Point to raw web-mercator grid string paths ({z}/{x}/{y}) to paint precipitation cells seamlessly
+            singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now(), {
+                opacity: 0.85,
+                pane: 'singleSitePane',
+                maxNativeZoom: 7, 
+                maxZoom: 18
+            }).addTo(map);
+
+            map.setView([lat, lon], 6); 
             document.getElementById('coords-display').innerHTML = "Active Target: " + selectedOption.text.split(' (')[0];
-            
-            // Recalibrate mask overlay rules cleanly matching vector loops tracking layers
-            setTimeout(recalibratePerimeterGradientMask, 400);
+            setTimeout(recalibratePerimeterGradientMask, 80);
         }
 
         function executeStationChangeToggle() {
-            if (activeRadarMode === 'single') loadSingleSiteRadar();
+            if (currentRadarMode === 'single') loadSingleSiteRadar();
         }
 
         function recalibratePerimeterGradientMask() {
-            if (activeRadarMode !== 'single' || !map.getSource('single-site-circle-source')) return;
-            var dropdown = document.getElementById('radar-station-dropdown');
-            var selectedOption = dropdown.options[dropdown.selectedIndex];
-            if (!selectedOption) return;
+            if (currentRadarMode !== 'single' || !singleSiteBorderCircle || !map) return;
+            var centerPointCoordinates = map.latLngToContainerPoint(singleSiteBorderCircle.getLatLng());
+            var initialLatLng = singleSiteBorderCircle.getLatLng();
+            var offsetLongitudeBound = initialLatLng.lng + (250000 / (111320 * Math.cos(initialLatLng.lat * Math.PI / 180)));
+            var boundaryLatLng = L.latLng(initialLatLng.lat, offsetLongitudeBound);
+            var outerEdgeCoordinates = map.latLngToContainerPoint(boundaryLatLng);
+            var liveRadiusPixels = Math.abs(outerEdgeCoordinates.x - centerPointCoordinates.x);
 
-            var lat = parseFloat(selectedOption.getAttribute('data-lat'));
-            var lon = parseFloat(selectedOption.getAttribute('data-lon'));
-            
-            var centerPointCoordinates = map.project([lon, lat]);
-            var boundaryPointCoordinates = map.project([lon + (250 / (111.32 * Math.cos(lat * Math.PI / 180))), lat]);
-            var liveRadiusPixels = Math.abs(boundaryPointCoordinates.x - centerPointCoordinates.x);
-
-            var canvasElement = map.getCanvas();
-            if (canvasElement) {
+            var paneElement = map.getPane('singleSitePane');
+            if (paneElement) {
                 var gradientMaskString = 'radial-gradient(circle ' + liveRadiusPixels + 'px at ' + centerPointCoordinates.x + 'px ' + centerPointCoordinates.y + 'px, rgba(0,0,0,1) 100%, rgba(0,0,0,0) 100%)';
-                canvasElement.style.maskImage = gradientMaskString;
-                canvasElement.style.webkitMaskImage = gradientMaskString;
+                paneElement.style.maskImage = gradientMaskString;
+                paneElement.style.webkitMaskImage = gradientMaskString;
             }
         }
 
-        // Handle structural view updates dynamically
-        map.on('move', recalibratePerimeterGradientMask);
-        map.on('zoom', recalibratePerimeterGradientMask);
+        function plotWarningPolygonsOnMap() {
+            polygonAlertGroup.clearLayers();
 
-        function initRainViewerRadarLoopEngine() {
+            masterAlertFeatures.forEach(feature => {
+                if (!feature.geometry || !feature.geometry.coordinates) return;
+                const properties = feature.properties || {};
+                const eventName = properties.event || "Weather Event";
+                const eventUpper = eventName.toUpperCase();
+                const alertId = properties.id || Math.random().toString(36).substr(2, 9);
+
+                if (eventUpper.includes("WATCH") || eventUpper.includes("ADVISORY")) return;
+
+                let strokeColor = "#a855f7"; let strokeWeight = 2.0; let fillAlpha = 0.15; 
+                let popupThemeClass = "";
+
+                let isFloodWarning = eventUpper.includes("FLOOD") && !eventUpper.includes("FLASH");
+                let isFlashFloodWarning = eventUpper.includes("FLASH FLOOD");
+                let isTornadoWarning = eventUpper.includes("TORNADO");
+
+                if (isTornadoWarning) {
+                    strokeColor = "#FF0000"; strokeWeight = 3.5; fillAlpha = 0.25;
+                    popupThemeClass = "tornado-warning-popup";
+                } else if (eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM")) {
+                    strokeColor = "#FFAA00"; strokeWeight = 2.5; fillAlpha = 0.15;
+                    popupThemeClass = "severe-thunderstorm-popup";
+                } else if (isFloodWarning || isFlashFloodWarning) {
+                    strokeColor = "#00FF00"; strokeWeight = 2.5; fillAlpha = 0.15;
+                    popupThemeClass = "flood-warning-popup";
+                }
+
+                const parsedSectors = (properties.areaDesc || "Regional Sector").split(';')[0];
+                const coreAdvisoryNarrative = properties.description || "";
+
+                var extractedHazardText = "Radar indicated.";
+                var extractedSourceText = "Radar indicated.";
+
+                var hazardMatchPattern = /HAZARD\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
+                if (hazardMatchPattern && hazardMatchPattern[1]) {
+                    extractedHazardText = hazardMatchPattern[1].split('$$')[0].split('&&')[0].trim();
+                }
+
+                var sourceMatchPattern = /SOURCE\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
+                if (sourceMatchPattern && sourceMatchPattern[1]) {
+                    extractedSourceText = sourceMatchPattern[1].split('$$')[0].split('&&')[0].trim();
+                }
+
+                if (extractedHazardText.includes("SOURCE...")) extractedHazardText = extractedHazardText.split("SOURCE...")[0].trim();
+                if (extractedHazardText.includes("IMPACT...")) extractedHazardText = extractedHazardText.split("IMPACT...")[0].trim();
+                if (extractedSourceText.includes("IMPACT...")) extractedSourceText = extractedSourceText.split("IMPACT...")[0].trim();
+
+                var riskThreat = "Considerable";
+                var threatMatchPattern = /DAMAGE THREAT\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
+                if (threatMatchPattern && threatMatchPattern[1]) {
+                    riskThreat = threatMatchPattern[1].split('$$')[0].split('&&')[0].trim();
+                } else if (isTornadoWarning) {
+                    riskThreat = "Extreme";
+                }
+                var riskThreatUpper = riskThreat.toUpperCase();
+
+                var timeRemainingLabel = "Active Alert";
+                if (properties.ends) {
+                    var endTimestamp = new Date(properties.ends).getTime();
+                    var durationMinutesDiff = Math.ceil((endTimestamp - Date.now()) / (1000 * 60));
+                    if (durationMinutesDiff > 0) timeRemainingLabel = `Expires in ${durationMinutesDiff} Min`;
+                }
+
+                var dynamicWmoToken = properties.wmoIdentifier ? properties.wmoIdentifier.trim() : "NWS PRODUCT REPORT";
+                const compiledRawTextReport = `${dynamicWmoToken}\n\n${coreAdvisoryNarrative.trim()}`;
+
+                activeNwsTextMapCache[alertId] = {
+                    title: eventName,
+                    text: compiledRawTextReport
+                };
+
+                let popupInnerTemplateMarkup = "";
+                if (isFloodWarning) {
+                    popupInnerTemplateMarkup = `<div class="nws-pill-row"><b>Counties</b>${parsedSectors}</div>`;
+                } else if (isFlashFloodWarning) {
+                    let showThreatBlocks = (riskThreatUpper.includes("CONSIDERABLE") || riskThreatUpper.includes("CATASTROPHIC") || riskThreatUpper.includes("EXTREME"));
+                    if (showThreatBlocks) {
+                        popupInnerTemplateMarkup = `
+                            <div class="nws-pill-row"><b>Counties</b>${parsedSectors}</div>
+                            <div class="nws-grid-badges">
+                                <div class="nws-badge-block"><span>Source</span>${extractedSourceText}</div>
+                                <div class="nws-badge-block"><span>Damage Threat</span>${riskThreat}</div>
+                            </div>`;
+                    } else {
+                        popupInnerTemplateMarkup = `<div class="nws-pill-row"><b>Counties</b>${parsedSectors}</div>`;
+                    }
+                } else if (isTornadoWarning) {
+                    var hailSizeValue = properties.maxHailSize || "Quarter (1.00\")";
+                    popupInnerTemplateMarkup = `
+                        <div class="nws-pill-row"><b>Counties</b>${parsedSectors}</div>
+                        <div class="nws-grid-badges">
+                            <div class="nws-badge-block"><span>Source</span>${extractedSourceText}</div>
+                            <div class="nws-badge-block"><span>Max Hail</span>${hailSizeValue}</div>
+                        </div>`;
+                } else {
+                    popupInnerTemplateMarkup = `
+                        <div class="nws-pill-row"><b>Counties</b>${parsedSectors}</div>
+                        <div class="nws-grid-badges">
+                            <div class="nws-badge-block"><span>Source</span>${extractedSourceText}</div>
+                            <div class="nws-badge-block"><span>Damage Threat</span>${riskThreat}</div>
+                        </div>
+                        <div class="nws-pill-row" style="margin-top: 4px;"><b>Hazard</b>${extractedHazardText}</div>`;
+                }
+
+                L.geoJSON(feature, {
+                    pane: 'alertsPane', 
+                    style: { color: strokeColor, weight: strokeWeight, fillColor: strokeColor, fillOpacity: fillAlpha },
+                    onEachFeature: function(f, layer) {
+                        layer.bindPopup(`
+                            <div class="nws-severe-popup ${popupThemeClass}">
+                                <div class="nws-header-container">
+                                    <div class="nws-title-badge">${eventName}</div>
+                                    <button class="nws-info-trigger" onclick="launchNwsTextStatementModal('${alertId}')" title="View Full Text Product">ⓘ</button>
+                                </div>
+                                <div class="nws-expiry-subtitle">${timeRemainingLabel}</div>
+                                <div class="nws-countdown-track"><div class="nws-countdown-fill"></div></div>
+                                ${popupInnerTemplateMarkup}
+                            </div>
+                        `, { maxWidth: 310, closeButton: false });
+                    }
+                }).addTo(polygonAlertGroup);
+            });
+        }
+
+        function initRainViewerRadar() {
             fetch("https://api.rainviewer.com/public/weather-maps.json?t=" + Date.now())
                 .then(res => res.json())
                 .then(metadata => {
-                    radarFramesPaths = metadata.radar.past.slice(-5).map(f => f.path);
-                    currentActiveGlobalPath = radarFramesPaths[radarFramesPaths.length - 1];
+                    const displayFrames = metadata.radar.past.slice(-5); 
+                    const newestFrame = displayFrames[displayFrames.length - 1];
+                    currentActiveGlobalPath = newestFrame.path;
 
-                    if (radarFramesPaths.length > 0 && activeRadarMode === 'national') {
-                        var initialUrl = 'https://tilecache.rainviewer.com' + currentActiveGlobalPath + '/256/{z}/{x}/{y}/2/1_1.png';
-                        map.getSource('rainviewer-mosaic').setTiles([initialUrl]);
-                        animationIntervalId = setInterval(animateRadarMosaicLoopFrames, 1200);
+                    displayFrames.forEach((frame) => {
+                        const radarLayer = L.tileLayer('https://tilecache.rainviewer.com' + frame.path + '/256/{z}/{x}/{y}/2/1_1.png', {
+                            opacity: 0.0, 
+                            maxNativeZoom: 7,   
+                            maxZoom: 18,        
+                            pane: 'usMosaicPane' 
+                        });
+                        radarLayer.addTo(map);
+                        radarLayers.push(radarLayer);
+                    });
+
+                    if(radarLayers.length > 0 && currentRadarMode === 'national') {
+                        radarLayers[radarLayers.length - 1].setOpacity(0.85); 
+                        currentRadarIndex = radarLayers.length - 1;
+                        animationIntervalId = setInterval(animateRadarFrames, 1200); 
                     }
                 }).catch(err => console.error(err));
         }
 
-        function animateRadarMosaicLoopFrames() {
-            if (!playbackActive || radarFramesPaths.length === 0 || activeRadarMode !== 'national') return;
-            currentRadarFrameIndex = (currentRadarFrameIndex + 1) % radarFramesPaths.length;
-            var loopUrl = 'https://tilecache.rainviewer.com' + radarFramesPaths[currentRadarFrameIndex] + '/256/{z}/{x}/{y}/2/1_1.png';
-            map.getSource('rainviewer-mosaic').setTiles([loopUrl]);
+        function animateRadarFrames() {
+            if (!playbackActive || radarLayers.length === 0 || currentRadarMode !== 'national') return;
+            radarLayers[currentRadarIndex].setOpacity(0.0);
+            currentRadarIndex = (currentRadarIndex + 1) % radarLayers.length;
+            radarLayers[currentRadarIndex].setOpacity(0.85);
         }
 
         setInterval(function updateClockDisplay() {
@@ -928,7 +1031,7 @@
                 .then(res => res.json())
                 .then(resData => {
                     if(resData && resData.length > 0) {
-                        map.flyTo({ center: [parseFloat(resData[0].lon), parseFloat(resData[0].lat)], zoom: 6 });
+                        map.setView([parseFloat(resData[0].lat), parseFloat(resData[0].lon)], 6);
                         document.getElementById('coords-display').innerHTML = "Active Target: " + resData[0].display_name.split(',')[0];
                     }
                 }).catch(() => {});
