@@ -34,7 +34,7 @@
             filter: saturate(1.8) contrast(1.5) brightness(0.95) hue-rotate(-5deg) !important;
         }
 
-        /* SCREENSHOT SPEC ALIGNED COLLAPSIBLE UI */
+        /* SCREENSHOT SPEC ALIGNED COLLAPSIBLE UI Trigger */
         #menu-toggle-trigger {
             position: fixed;
             top: 50px;
@@ -60,6 +60,50 @@
             height: 3px;
             background: #000000; 
             border-radius: 2px;
+        }
+
+        /* ALIGNED TOP-RIGHT CRITICAL ACTIVE WARNING CONTROLLER */
+        .alerts-badge-container { 
+            position: fixed; 
+            top: 50px; 
+            right: 20px; 
+            z-index: 100000 !important; 
+            pointer-events: auto;
+        }
+
+        .alerts-badge-circle {
+            background: #ff6600; 
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            border: 2px solid rgba(255,255,255,0.2);
+            font-size: 18px;
+            color: #000000;
+            position: relative;
+        }
+
+        /* LIVE BADGE COUNTER MASK: Solid Red Oval over Top-Left shoulder */
+        .alerts-count-oval {
+            position: absolute;
+            top: -6px;
+            left: -12px;
+            background: #dc2626;
+            color: #ffffff;
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 11px;
+            padding: 2px 7px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.25);
+            min-width: 10px;
+            text-align: center;
+            line-height: 1;
         }
 
         #hud-panel { 
@@ -210,6 +254,7 @@
             );
         }
 
+        /* NWS SEVERE SYSTEM POP-UP TEMPLATES */
         .nws-severe-popup {
             background: rgba(15, 16, 20, 0.96);
             border: 2px solid rgba(210, 225, 40, 0.9);
@@ -256,23 +301,41 @@
         .nws-badge-block { background: rgba(0,0,0,0.2); padding: 4px 6px; border-radius: 4px; font-size: 10px; }
         .nws-badge-block span { display: block; color: #aaa; font-size: 8px; text-transform: uppercase; }
 
-        .alerts-badge-container { position: fixed; top: 45px; right: 25px; z-index: 9999999; }
-        .alerts-badge {
-            background: #ff6600; 
-            color: #fff;
-            font-family: monospace;
-            font-weight: bold;
-            font-size: 12px;
-            padding: 6px 10px;
-            border-radius: 20px;
-            box-shadow: 0 0 15px rgba(255, 102, 0, 0.6);
-            border: 1px solid rgba(255,255,255,0.3);
-            display: flex;
-            align-items: center;
-            gap: 5px;
+        /* MASTER ADVISORY LIST DIRECTORY STYLES */
+        .warning-list-item-node {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
             cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .alerts-badge::before { content: "⚠️"; }
+        .warning-list-item-node:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: #00d4ff;
+        }
+        .warning-list-item-node .event-title {
+            font-weight: bold;
+            font-size: 13px;
+        }
+        .warning-list-item-node .area-desc {
+            font-size: 11px;
+            color: #aaa;
+            margin-top: 2px;
+        }
+        .warning-list-item-node .view-text-pill {
+            font-size: 10px;
+            background: #ff0055;
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
 
         #raw-text-modal-backdrop {
             position: fixed;
@@ -351,9 +414,12 @@
         </div>
     </div>
 
-    <!-- Floating Action Top-Right Component Indicator -->
-    <div class="alerts-badge-container">
-        <div class="alerts-badge" id="badge-counter-element">--</div>
+    <!-- RE-ENGINEERED TRIGGER FRAMEWORK: Clickable orange sphere matching hamburger, overlaid with dynamic red badge counter -->
+    <div class="alerts-badge-container" onclick="openNationalAlertsDirectory()">
+        <div class="alerts-badge-circle" title="Open Active Warnings Directory">
+            <div class="alerts-count-oval" id="badge-counter-element">--</div>
+            ⚠️
+        </div>
     </div>
 
     <!-- HUD Control Framework overlay element -->
@@ -433,7 +499,6 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        // ALL 159 NEXRAD RADAR STATIONS
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -645,12 +710,11 @@
         ];
 
         window.onload = function() {
-            // FIXED HANDLER MAP HOOKS: Initialized safely inside structural execution contexts
             map = L.map('map', {
                 center: [centerLat, centerLng],
                 zoom: 5, 
-                minZoom: 1,
-                maxZoom: 18, // FIXED INTERCEPT ceiling: Caps map tracking at zoom 7 while on MRMS view to protect server threads
+                minZoom: 3,
+                maxZoom: 7, 
                 zoomControl: false
             });
 
@@ -694,6 +758,42 @@
         function toggleTopLeftControlPanel() {
             var panel = document.getElementById('hud-panel');
             panel.classList.toggle('collapsed');
+        }
+
+        /* CLICK TRACK INTERCEPTOR: Assembles an interactive, scrollable text index of all warnings */
+        function openNationalAlertsDirectory() {
+            if (masterAlertFeatures.length === 0) {
+                document.getElementById('modal-title-element').innerText = "NWS WARNING MATRIX";
+                document.getElementById('modal-body-element').innerText = "NO ACTIVE SEVERE WEATHER WARNINGS IN EFFECT SYSTEMWIDE.";
+                document.getElementById('raw-text-modal-backdrop').style.display = 'flex';
+                return;
+            }
+
+            document.getElementById('modal-title-element').innerText = `ACTIVE ADVISORY CATALOG (${masterAlertFeatures.length})`;
+            
+            let listDomContainer = document.createElement('div');
+            masterAlertFeatures.forEach(feature => {
+                const prop = feature.properties || {};
+                const id = prop.id || Math.random().toString();
+                const sectors = (prop.areaDesc || "Regional Track").split(';')[0];
+                
+                let rowNode = document.createElement('div');
+                rowNode.className = "warning-list-item-node";
+                rowNode.onclick = () => { launchNwsTextStatementModal(id); };
+                rowNode.innerHTML = `
+                    <div>
+                        <div class="event-title">${prop.event || "Warning"}</div>
+                        <div class="area-desc">${sectors}</div>
+                    </div>
+                    <div class="view-text-pill">TXT</div>
+                `;
+                listDomContainer.appendChild(rowNode);
+            });
+
+            var targetModalBody = document.getElementById('modal-body-element');
+            targetModalBody.innerHTML = "";
+            targetModalBody.appendChild(listDomContainer);
+            document.getElementById('raw-text-modal-backdrop').style.display = 'flex';
         }
 
         function launchNwsTextStatementModal(alertId) {
@@ -747,7 +847,6 @@
                 map.getPane('singleSitePane').style.maskImage = 'none';
                 map.getPane('singleSitePane').style.webkitMaskImage = 'none';
                 
-                // FIXED BOUNDARY LIMIT: Enforces zoom limits to keep the national mosaic from erroring
                 map.setMaxZoom(7);
                 
                 if(radarLayers.length > 0) {
@@ -764,7 +863,6 @@
                 map.getPane('singleSitePane').style.display = 'block';
                 radarLayers.forEach(l => l.setOpacity(0.0));
                 
-                // UNLOCK ZOOM: Restores full zoom level 18 tracking when switching to high-definition Single-Site code
                 map.setMaxZoom(18);
                 loadSingleSiteRadar();
             }
@@ -802,7 +900,7 @@
                 maxZoom: 18
             }).addTo(map);
 
-            map.setView([lat, lon], 7); // Center directly on chosen target tower safely
+            map.setView([lat, lon], 7); 
             setTimeout(recalibratePerimeterGradientMask, 80);
         }
 
@@ -973,7 +1071,7 @@
                     });
 
                     if(radarLayers.length > 0 && currentRadarMode === 'national') {
-                        radarLayers[currentRadarIndex].setOpacity(0.85); 
+                        radarLayers[radarLayers.length - 1].setOpacity(0.85); 
                         currentRadarIndex = radarLayers.length - 1;
                         animationIntervalId = setInterval(animateRadarFrames, 1200); 
                     }
