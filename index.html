@@ -649,8 +649,8 @@
             map = L.map('map', {
                 center: [centerLat, centerLng],
                 zoom: 5, 
-                minZoom: 3,
-                maxZoom: 7, // FIXED INTERCEPT ceiling: Caps map tracking at zoom 7 while on MRMS view to protect server threads
+                minZoom: 1,
+                maxZoom: 18, // FIXED INTERCEPT ceiling: Caps map tracking at zoom 7 while on MRMS view to protect server threads
                 zoomControl: false
             });
 
