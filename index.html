@@ -410,6 +410,7 @@
         </div>
     </div>
 
+    <!-- Collapsible right sidebar panel drawer overlay matrix -->
     <div id="right-alerts-sidebar" class="collapsed">
         <div class="sidebar-header-title">Live NWS Alerts Feed</div>
         <div class="sidebar-counter-box">
@@ -507,6 +508,7 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
+        // FIXED STRUCTURAL HANG: Re-injected full dictionary array blocks down inside script space safely
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -718,7 +720,7 @@
         ];
 
         window.onload = function() {
-            // FIXED INITIALIZATION VECTOR: Map sets global bounds cleanly up to level 18
+            // INITIALIZATION SEQUENCE SECURED
             map = L.map('map', {
                 center: [centerLat, centerLng],
                 zoom: 5, 
@@ -757,8 +759,6 @@
             initRainViewerRadar();
             loadWeatherAlertPipeline();
 
-            // FIXED AUTOMATION BLOCK: Completely scrubbed automated view switching listeners to keep modes strictly manual
-
             map.on('zoomend move moveend', recalibratePerimeterGradientMask);
 
             document.addEventListener("visibilitychange", function() {
@@ -766,13 +766,13 @@
             });
         };
 
-        function toggleRightAlertsSidebarPanel() {
-            var panel = document.getElementById('right-alerts-sidebar');
+        function toggleTopLeftControlPanel() {
+            var panel = document.getElementById('hud-panel');
             panel.classList.toggle('collapsed');
         }
 
-        function toggleTopLeftControlPanel() {
-            var panel = document.getElementById('hud-panel');
+        function toggleRightAlertsSidebarPanel() {
+            var panel = document.getElementById('right-alerts-sidebar');
             panel.classList.toggle('collapsed');
         }
 
@@ -912,7 +912,6 @@
                 targetTilePath = '/' + targetTilePath;
             }
 
-            // FIXED CACHE INTERPOLATION INDEX: Replaced Date.now() timestamp method with a structured 10-minute bracket string to force RainViewer servers to deliver all storm sweeps accurately on both modes
             var timeBracketToken = Math.floor(Date.now() / 600000);
             singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/1/1_1.png?cb=' + timeBracketToken, {
                 opacity: 0.85,
@@ -1104,6 +1103,40 @@
             radarLayers[currentRadarIndex].setOpacity(0.0);
             currentRadarIndex = (currentRadarIndex + 1) % radarLayers.length;
             radarLayers[currentRadarIndex].setOpacity(0.85);
+        }
+
+        function togglePlayback() {
+            playbackActive = !playbackActive;
+            document.getElementById('play-btn').innerText = playbackActive ? "PAUSE" : "RESUME";
+        }
+
+        function assembleCompleteNEXRADMenu() {
+            const dropdown = document.getElementById('radar-station-dropdown');
+            if (!dropdown) return;
+            dropdown.innerHTML = ""; 
+            fullUSRadarDictionary.sort((a, b) => a.name.localeCompare(b.name));
+            fullUSRadarDictionary.forEach(station => {
+                let node = document.createElement('option');
+                node.value = station.id;
+                node.setAttribute('data-lat', station.lat);
+                node.setAttribute('data-lon', station.lon);
+                node.text = `${station.name} (K${station.id.toUpperCase()})`;
+                dropdown.appendChild(node);
+            });
+            dropdown.value = "lsx"; 
+        }
+
+        function executeLocalTargetReset() {
+            var locationInput = document.getElementById('city-search-input').value.trim();
+            if(locationInput === "") return;
+
+            fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(locationInput), { headers: { 'User-Agent': 'StormStream/1.0' } })
+                .then(res => res.json())
+                .then(resData => {
+                    if(resData && resData.length > 0) {
+                        map.setView([parseFloat(resData[0].lat), parseFloat(resData[0].lon)], 6);
+                    }
+                }).catch(() => {});
         }
     </script>
 </body>
