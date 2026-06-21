@@ -350,7 +350,6 @@
 
     <div id="map"></div>
 
-    <!-- Meteorological Text Summary Popup Structure -->
     <div id="raw-text-modal-backdrop" onclick="closeNwsTextStatementModal()">
         <div id="raw-text-modal-window" onclick="event.stopPropagation()">
             <div class="modal-header-bar">
@@ -361,12 +360,10 @@
         </div>
     </div>
 
-    <!-- Floating Action Top-Right Component Indicator -->
     <div class="alerts-badge-container">
         <div class="alerts-badge" id="badge-counter-element">--</div>
     </div>
 
-    <!-- HUD Control Framework overlay element -->
     <div style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; pointer-events: none;">
 
         <div id="menu-toggle-trigger" onclick="toggleTopLeftControlPanel()">
@@ -390,7 +387,6 @@
             </div>
 
             <div class="radar-type-grid">
-                <!-- RENAME ACTION IMPLEMENTATION: "US Mosaic" changed to "MRMS" per core specification -->
                 <button id="radar-us-btn" class="radar-select-btn active" onclick="switchRadarMode('national')">MRMS</button>
                 <button id="radar-site-btn" class="radar-select-btn" onclick="switchRadarMode('single')">Single-Site</button>
             </div>
@@ -409,7 +405,6 @@
             </div>
         </div>
 
-        <!-- Upper Signal Spectrum DBZ Legend -->
         <div id="dbz-legend">
             <div style="width: 100vw;">
                 <div class="gradient-bar"></div>
@@ -440,7 +435,7 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        // ALL 159 OPERATIONAL NEXRAD STATIONS NATIVELY COMPILED
+        // ALL 159 NEXRAD RADAR STATIONS
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -486,7 +481,7 @@
             { id: "dfw", lat: 32.90, lon: -97.04, name: "Dallas-Ft Worth, TX" },
             { id: "dgx", lat: 32.28, lon: -89.98, name: "Jackson, MS" },
             { id: "dix", lat: 40.01, lon: -74.41, name: "Mount Holly, NJ" },
-            { id: "dlh", lat: 46.84, lon: -92.21, name: "Hearing, MN" },
+            { id: "dlh", lat: 46.84, lon: -92.21, name: "Duluth, MN" },
             { id: "dmx", lat: 41.73, lon: -93.72, name: "Des Moines, IA" },
             { id: "dov", lat: 39.13, lon: -75.47, name: " Dover AFB, DE" },
             { id: "dpa", lat: 41.91, lon: -88.25, name: "West Chicago, IL" },
@@ -571,7 +566,7 @@
             { id: "mci", lat: 39.30, lon: -94.71, name: "Kansas City, MO" },
             { id: "mco", lat: 28.43, lon: -81.31, name: "Orlando, FL" },
             { id: "mda", lat: 39.11, lon: -76.88, name: "Columbia, MD" },
-            { id: "mdw", lat: 41.79, lon: -87.75, name: "Chicago Midway, IL" },
+            { id: "mdw", lat: 41.79, merge: true, lon: -87.75, name: "Chicago Midway, IL" },
             { id: "meg", lat: 35.34, lon: -89.87, name: "Memphis, TN" },
             { id: "mia", lat: 25.79, lon: -80.29, name: "Miami, FL" },
             { id: "mke", lat: 42.95, lon: -87.90, name: "Milwaukee, WI" },
@@ -697,22 +692,6 @@
             });
         };
 
-        function assembleCompleteNEXRADMenu() {
-            const dropdown = document.getElementById('radar-station-dropdown');
-            if (!dropdown) return;
-            dropdown.innerHTML = ""; 
-            fullUSRadarDictionary.sort((a, b) => a.name.localeCompare(b.name));
-            fullUSRadarDictionary.forEach(station => {
-                let node = document.createElement('option');
-                node.value = station.id;
-                node.setAttribute('data-lat', station.lat);
-                node.setAttribute('data-lon', station.lon);
-                node.text = `${station.name} (K${station.id.toUpperCase()})`;
-                dropdown.appendChild(node);
-            });
-            dropdown.value = "lsx"; 
-        }
-
         function toggleTopLeftControlPanel() {
             var panel = document.getElementById('hud-panel');
             panel.classList.toggle('collapsed');
@@ -804,13 +783,14 @@
                 pointerEvents: 'none'
             }).addTo(map);
 
-            // COMPONENT FIX: Querying active loop endpoints to extract station geometry data without throwing 404 cache errors
-            var targetTilePath = currentActiveGlobalPath ? currentActiveGlobalPath : "/v2/radar/nowcast";
+            // DUAL ROUTE CONSTRUX: Point the standalone layer to the matching active dynamic timeline frame folder to pull single-site radar data seamlessly
+            var targetTilePath = currentActiveGlobalPath ? currentActiveGlobalPath : (radarFramesPaths.length > 0 ? radarFramesPaths[radarFramesPaths.length - 1] : "/v2/radar/nowcast");
             if (!targetTilePath.startsWith('/')) {
                 targetTilePath = '/' + targetTilePath;
             }
 
-            singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now(), {
+            // COLOR SPECTRUM FIXED MATRIX: Swapped configuration properties from 2/1_1.png to 1/1_1.png to synchronize storm cell data with the upper legend spectrum
+            singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/1/1_1.png?cb=' + Date.now(), {
                 opacity: 0.85,
                 pane: 'singleSitePane',
                 maxNativeZoom: 7, 
@@ -958,7 +938,7 @@
                             <div class="nws-severe-popup ${popupThemeClass}">
                                 <div class="nws-header-container">
                                     <div class="nws-title-badge">${eventName}</div>
-                                    <button class="nws-info-trigger" onclick="launchNwsTextStatementModal('${alertId}')" title="View Full Text Product">ⓘ</button>
+                                    <button class="nws-info-trigger" onclick="launchNwsTextStatementModal('${alertId}')">ⓘ</button>
                                 </div>
                                 <div class="nws-expiry-subtitle">${timeRemainingLabel}</div>
                                 <div class="nws-countdown-track"><div class="nws-countdown-fill"></div></div>
@@ -974,12 +954,12 @@
             fetch("https://api.rainviewer.com/public/weather-maps.json?t=" + Date.now())
                 .then(res => res.json())
                 .then(metadata => {
-                    // Extract past loops map structure paths
                     radarFramesPaths = metadata.radar.past.slice(-5).map(f => f.path);
                     currentActiveGlobalPath = radarFramesPaths[radarFramesPaths.length - 1];
 
                     radarFramesPaths.forEach((path) => {
-                        const radarLayer = L.tileLayer('https://tilecache.rainviewer.com' + path + '/256/{z}/{x}/{y}/2/1_1.png', {
+                        // COLOR SPECTRUM FIXED MATRIX: Pointed baseline loops from style index 2 to 1 to force MRMS coloring into strict dBZ conformity
+                        const radarLayer = L.tileLayer('https://tilecache.rainviewer.com' + path + '/256/{z}/{x}/{y}/1/1_1.png', {
                             opacity: 0.0, 
                             maxNativeZoom: 7,   
                             maxZoom: 18,        
@@ -1018,6 +998,22 @@
         function togglePlayback() {
             playbackActive = !playbackActive;
             document.getElementById('play-btn').innerText = playbackActive ? "PAUSE" : "RESUME";
+        }
+
+        function assembleCompleteNEXRADMenu() {
+            const dropdown = document.getElementById('radar-station-dropdown');
+            if (!dropdown) return;
+            dropdown.innerHTML = ""; 
+            fullUSRadarDictionary.sort((a, b) => a.name.localeCompare(b.name));
+            fullUSRadarDictionary.forEach(station => {
+                let node = document.createElement('option');
+                node.value = station.id;
+                node.setAttribute('data-lat', station.lat);
+                node.setAttribute('data-lon', station.lon);
+                node.text = `${station.name} (K${station.id.toUpperCase()})`;
+                dropdown.appendChild(node);
+            });
+            dropdown.value = "lsx"; 
         }
 
         function executeLocalTargetReset() {
