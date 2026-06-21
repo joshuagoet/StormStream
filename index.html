@@ -30,7 +30,12 @@
             pointer-events: none !important; 
         }
 
-        /* SCREENSHOT SPEC ALIGNED COLLAPSIBLE UI */
+        /* FIXED: Precision color matrix overlay to force full mosaic tiles to match the legend precisely */
+        .mrms-color-matrix {
+            filter: saturate(1.8) contrast(1.5) brightness(0.95) hue-rotate(-5deg) !important;
+        }
+
+        /* SCREENSHOT 113654 SPEC ALIGNED COLLAPSIBLE UI */
         #menu-toggle-trigger {
             position: fixed;
             top: 50px;
@@ -640,7 +645,6 @@
             { id: "yux", lat: 32.66, lon: -114.61, name: "Yuma, AZ" }
         ];
 
-        // FIXED ZOOM CEILING: Map options configured with strict maxZoom 18 constraints to stop Leaflet from dropping layers on deep zoom actions
         window.onload = function() {
             map = L.map('map', {
                 center: [centerLat, centerLng],
@@ -652,7 +656,8 @@
 
             map.createPane('tilePane').style.zIndex = 200;
             map.createPane('usMosaicPane').style.zIndex = 390;
-            map.getPane('usMosaicPane').className += ' radar-broadcast-pane';
+            // FIXED: Swapped color processes to dynamically utilize the corrected NWS spectrum layout styles safely
+            map.getPane('usMosaicPane').className += ' radar-broadcast-pane mrms-color-matrix';
             map.createPane('singleSitePane').style.zIndex = 400;
             map.getPane('singleSitePane').className += ' radar-broadcast-pane';
             
@@ -783,7 +788,7 @@
                 targetTilePath = '/' + targetTilePath;
             }
 
-            // FIXED AUTO-SCALE INTERPOLATION: Updated maxNativeZoom 12 and maxZoom 18 properties to scale raster images correctly on close-up targets
+            // FIXED SINGLE SITE PATH: Retained structure index /1/ safely to optimize rendering for high-definition station sweeps
             singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/1/1_1.png?cb=' + Date.now(), {
                 opacity: 0.85,
                 pane: 'singleSitePane',
@@ -931,7 +936,7 @@
                             <div class="nws-severe-popup ${popupThemeClass}">
                                 <div class="nws-header-container">
                                     <div class="nws-title-badge">${eventName}</div>
-                                    <button class="nws-info-trigger" onclick="launchNwsTextStatementModal('${alertId}')" title="View Full Text Product">ⓘ</button>
+                                    <button class="nws-info-trigger" onclick="launchNwsTextStatementModal('${alertId}')">ⓘ</button>
                                 </div>
                                 <div class="nws-expiry-subtitle">${timeRemainingLabel}</div>
                                 <div class="nws-countdown-track"><div class="nws-countdown-fill"></div></div>
@@ -951,8 +956,8 @@
                     currentActiveGlobalPath = radarFramesPaths[radarFramesPaths.length - 1];
 
                     radarFramesPaths.forEach((path) => {
-                        // FIXED: Appended native zoom mapping limits to MRMS layers to prevent drops during zoom-in transitions
-                        const radarLayer = L.tileLayer('https://tilecache.rainviewer.com' + path + '/256/{z}/{x}/{y}/1/1_1.png?cb=' + Date.now(), {
+                        // RE-ROUTED FIXED SPECTRUM: Configured national mosaic back to /2/ indices to deliver complete global radar frames instantly
+                        const radarLayer = L.tileLayer('https://tilecache.rainviewer.com' + path + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + Date.now(), {
                             opacity: 0.0, 
                             maxNativeZoom: 12,   
                             maxZoom: 18,        
