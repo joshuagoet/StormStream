@@ -383,6 +383,7 @@
             overflow: hidden;
         }
 
+        /* CARD OVERLAY SYSTEM - SCREENSHOT TEMPLATES APPIED */
         .nws-screenshot-popup-container {
             width: 250px;
             padding: 12px;
@@ -637,6 +638,7 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
+        // FIXED ARRAY INTEGRITY BLOCK: Fully qualified dictionary list to avoid compilation breaks during dropdown assembly loops
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -847,6 +849,52 @@
             { id: "yux", lat: 32.66, lon: -114.61, name: "Yuma, AZ" }
         ];
 
+        window.onload = function() {
+            map = L.map('map', {
+                center: [centerLat, centerLng],
+                zoom: 5, 
+                minZoom: 3,
+                maxZoom: 18, 
+                zoomControl: false
+            });
+
+            map.createPane('tilePane').style.zIndex = 200;
+            map.createPane('usMosaicPane').style.zIndex = 390;
+            map.getPane('usMosaicPane').className += ' radar-broadcast-pane mrms-color-matrix';
+            map.createPane('singleSitePane').style.zIndex = 400;
+            map.getPane('singleSitePane').className += ' radar-broadcast-pane';
+            
+            map.createPane('alertsPane').style.zIndex = 700;
+            map.createPane('labelsPane').style.zIndex = 800;
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+                pane: 'tilePane',
+                opacity: 0.18,
+                maxNativeZoom: 12,
+                maxZoom: 18
+            }).addTo(map);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+                pane: 'labelsPane',
+                pointerEvents: 'none',
+                opacity: 0.85,
+                maxNativeZoom: 12,
+                maxZoom: 18
+            }).addTo(map);
+
+            polygonAlertGroup = L.layerGroup().addTo(map);
+
+            assembleCompleteNEXRADMenu();
+            initRainViewerRadar();
+            loadWeatherAlertPipeline();
+
+            map.on('zoomend move moveend', recalibratePerimeterGradientMask);
+
+            document.addEventListener("visibilitychange", function() {
+                if (!document.hidden) loadWeatherAlertPipeline();
+            });
+        };
+
         function toggleTopLeftControlPanel() {
             var panel = document.getElementById('hud-panel');
             panel.classList.toggle('collapsed');
@@ -1040,6 +1088,10 @@
                 let strokeColor = "#a855f7"; let strokeWeight = 2.0; let fillAlpha = 0.15; 
                 let popupThemeClass = "theme-severe";
 
+                let isFloodWarning = eventUpper.includes("FLOOD") && !eventUpper.includes("FLASH");
+                let isFlashFloodWarning = eventUpper.includes("FLASH FLOOD");
+                let isTornadoWarning = eventUpper.includes("TORNADO");
+
                 if (isTornadoWarning) {
                     strokeColor = "#FF0000"; strokeWeight = 3.5; fillAlpha = 0.25;
                     popupThemeClass = "theme-tornado";
@@ -1143,8 +1195,7 @@
 
                 L.geoJSON(feature, {
                     pane: 'alertsPane', 
-                    // FIXED OVERRIDE STRIP: Set stroke to false to completely hide white borders outside the colored regions
-                    style: { stroke: false, fillColor: strokeColor, fillOpacity: fillAlpha },
+                    style: { color: strokeColor, weight: strokeWeight, fillColor: strokeColor, fillOpacity: fillAlpha },
                     onEachFeature: function(f, layer) {
                         layer.bindPopup(`
                             <div class="nws-screenshot-popup-container ${popupThemeClass}">
@@ -1167,22 +1218,6 @@
                     }
                 }).addTo(polygonAlertGroup);
             });
-        }
-
-        function assembleCompleteNEXRADMenu() {
-            const dropdown = document.getElementById('radar-station-dropdown');
-            if (!dropdown) return;
-            dropdown.innerHTML = ""; 
-            fullUSRadarDictionary.sort((a, b) => a.name.localeCompare(b.name));
-            fullUSRadarDictionary.forEach(station => {
-                let node = document.createElement('option');
-                node.value = station.id;
-                node.setAttribute('data-lat', station.lat);
-                node.setAttribute('data-lon', station.lon);
-                node.text = `${station.name} (K${station.id.toUpperCase()})`;
-                dropdown.appendChild(node);
-            });
-            dropdown.value = "lsx"; 
         }
 
         function initRainViewerRadar() {
@@ -1217,6 +1252,26 @@
             radarLayers[currentRadarIndex].setOpacity(0.0);
             currentRadarIndex = (currentRadarIndex + 1) % radarLayers.length;
             radarLayers[currentRadarIndex].setOpacity(0.85);
+        }
+
+        function assembleCompleteNEXRADMenu() {
+            const dropdown = document.getElementById('radar-station-dropdown');
+            if (!dropdown) return;
+            dropdown.innerHTML = ""; 
+            fullUSRadarDictionary.sort((a, b) => a.name.localeCompare(b.name));
+            fullUSRadarDictionary.forEach(station => {
+                let node = document.createElement('option');
+                node.value = station.id;
+                node.setAttribute('data-lat', station.lat);
+                node.setAttribute('data-lon', station.lon);
+                node.text = `${station.name} (K${station.id.toUpperCase()})`;
+                dropdown.appendChild(node);
+            });
+            dropdown.value = "lsx"; 
+        }
+
+        function executeStationChangeToggle() {
+            if (currentRadarMode === 'single') loadSingleSiteRadar();
         }
 
         function executeLocalTargetReset() {
