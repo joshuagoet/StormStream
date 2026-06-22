@@ -35,7 +35,7 @@
         }
 
         .mrms-color-matrix {
-            filter: saturate(1.8) contrast(1.5) brightness(0.95) hue-rotate(-5deg) !important;
+            filter: saturate(2.3) contrast(1.4) brightness(0.9) hue-rotate(-12deg) !important;
         }
 
         #menu-toggle-trigger {
@@ -394,6 +394,22 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             position: relative;
         }
+
+        /* DYNAMIC PDS NOTIFICATION TEXT CALLOUT CLASS */
+        .pds-danger-alert-box {
+            background: #dc2626 !important;
+            color: #ffffff !important;
+            font-weight: 900 !important;
+            font-size: 10px !important;
+            text-align: center !important;
+            padding: 6px 8px !important;
+            border-radius: 4px !important;
+            margin-top: 6px !important;
+            letter-spacing: 0.3px !important;
+            line-height: 1.3 !important;
+            border: 1px dashed #ffffff !important;
+            text-transform: uppercase !important;
+        }
     </style>
 </head>
 <body>
@@ -410,7 +426,6 @@
         </div>
     </div>
 
-    <!-- Collapsible right sidebar panel drawer overlay matrix -->
     <div id="right-alerts-sidebar" class="collapsed">
         <div class="sidebar-header-title">Live NWS Alerts Feed</div>
         <div class="sidebar-counter-box">
@@ -508,7 +523,6 @@
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
-        // FIXED STRUCTURAL HANG: Re-injected full dictionary array blocks down inside script space safely
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -633,7 +647,7 @@
             { id: "ltg", lat: 36.16, lon: -86.68, name: "Nashville, TN" },
             { id: "lwx", lat: 38.98, lon: -77.48, name: "Washington DC, VA" },
             { id: "lzk", lat: 34.84, lon: -92.26, name: "Little Rock, AR" },
-            { id: "maf", lat: 31.94, lon: -102.19, name: "Midland/Odessa, TX" },
+            { id: "maf", lat: 31.94, lon: -102.19, name: "Middle/Odessa, TX" },
             { id: "max", lat: 42.08, lon: -122.90, name: "Medford, OR" },
             { id: "mbx", lat: 48.39, lon: -100.86, name: "Minot AFB, ND" },
             { id: "mci", lat: 39.30, lon: -94.71, name: "Kansas City, MO" },
@@ -720,7 +734,6 @@
         ];
 
         window.onload = function() {
-            // INITIALIZATION SEQUENCE SECURED
             map = L.map('map', {
                 center: [centerLat, centerLng],
                 zoom: 5, 
@@ -977,6 +990,15 @@
                 const parsedSectors = (properties.areaDesc || "Regional Sector").split(';')[0];
                 const coreAdvisoryNarrative = properties.description || "";
 
+                // PDS INTERCEPT LOGIC: Checks both narrative strings for Particularly Dangerous Situation tokens
+                var textDumpToValidate = (coreAdvisoryNarrative + " " + (properties.headline || "")).toUpperCase();
+                var isParticularlyDangerousSituation = textDumpToValidate.includes("PARTICULARLY DANGEROUS SITUATION") || textDumpToValidate.includes("PDS ");
+                
+                let pdsCalloutMarkupBlock = "";
+                if (isTornadoWarning && isParticularlyDangerousSituation) {
+                    pdsCalloutMarkupBlock = `<div class="pds-danger-alert-box">THIS IS A PARTICULARLY DANGEROUS SITUATION... TAKE COVER NOW!</div>`;
+                }
+
                 var extractedHazardText = "Radar indicated.";
                 var extractedSourceText = "Radar indicated.";
 
@@ -999,7 +1021,7 @@
                 if (threatMatchPattern && threatMatchPattern[1]) {
                     riskThreat = threatMatchPattern[1].split('$$')[0].split('&&')[0].trim();
                 } else if (isTornadoWarning) {
-                    riskThreat = "Extreme";
+                    riskThreat = isParticularlyDangerousSituation ? "Catastrophic" : "Extreme";
                 }
                 var riskThreatUpper = riskThreat.toUpperCase();
 
@@ -1040,7 +1062,8 @@
                         <div class="nws-grid-badges">
                             <div class="nws-badge-block"><span>Source</span>${extractedSourceText}</div>
                             <div class="nws-badge-block"><span>Max Hail</span>${hailSizeValue}</div>
-                        </div>`;
+                        </div>
+                        ${pdsCalloutMarkupBlock}`;
                 } else {
                     popupInnerTemplateMarkup = `
                         <div class="nws-pill-row"><b>Counties</b>${parsedSectors}</div>
@@ -1080,7 +1103,7 @@
 
                     var timeBracketToken = Math.floor(Date.now() / 600000);
                     radarFramesPaths.forEach((path) => {
-                        const radarLayer = L.tileLayer('https://tilecache.rainviewer.com' + path + '/256/{z}/{x}/{y}/2/1_1.png?cb=' + timeBracketToken, {
+                        const radarLayer = L.tileLayer('https://tilecache.rainviewer.com' + path + '/256/{z}/{x}/{y}/2/0_0.png?cb=' + timeBracketToken, {
                             opacity: 0.0, 
                             maxNativeZoom: 7,   
                             maxZoom: 18,        
@@ -1141,3 +1164,4 @@
     </script>
 </body>
 </html>
+```_
