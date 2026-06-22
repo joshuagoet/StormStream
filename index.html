@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StormStream</title>    
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <style>
         html, body { 
             margin: 0; 
@@ -30,6 +30,7 @@
             z-index: 10000000 !important;
         }
 
+        /* POPUP CORE STYLE OVERRIDES */
         .leaflet-popup-content-wrapper {
             background: transparent !important;
             box-shadow: none !important;
@@ -325,6 +326,7 @@
             margin-top: 2px;
         }
 
+        /* GLASS CARD NOTIFICATION OVERLAYS */
         .nws-screenshot-popup-container {
             width: 250px;
             padding: 12px;
@@ -574,7 +576,6 @@
         var map;
         var playbackActive = true;
         var masterAlertFeatures = [];
-        var instantAlertCount = 0;
         var radarLayers = [];
         var radarFramesPaths = []; 
         var currentRadarIndex = 0;
@@ -597,6 +598,7 @@
             { id: "okx", lat: 40.87, lon: -72.86, name: "New York City/Upton, NY" }
         ];
 
+        // FIXED EXECUTION SEQUENCE: Map fully loads bounds system prior to querying endpoints
         window.onload = function() {
             map = L.map('map', {
                 center: [centerLat, centerLng],
@@ -665,7 +667,7 @@
             let container = document.getElementById('sidebar-feed-container');
             if(!container) return; container.innerHTML = "";
             if(masterAlertFeatures.length === 0) {
-                container.innerHTML = `<div style="font-size:11px; color:#64748b; padding:20px 0; text-align:center;">No active weather hazards.</div>`;
+                container.innerHTML = `<div style="font-size:11px; color:#64748b; padding:20px 0; text-align:center;">No active text blocks.</div>`;
                 return;
             }
 
@@ -705,6 +707,7 @@
 
                 const coreAdvisoryNarrative = properties.description || "";
 
+                // CHECK BOTH ADVISORY STRINGS FOR PARTICULARLY DANGEROUS SITUATION FLAGS
                 var textDumpToValidate = (coreAdvisoryNarrative + " " + (properties.headline || "")).toUpperCase();
                 var isParticularlyDangerousSituation = textDumpToValidate.includes("PARTICULARLY DANGEROUS SITUATION") || textDumpToValidate.includes("PDS ");
 
@@ -719,6 +722,23 @@
                 else if (isFlashFlood) { strokeColor = "#00FF00"; fillAlpha = 0.22; popupThemeClass = "theme-flashflood"; }
                 else if (isStandardFlood) { strokeColor = "#008000"; fillAlpha = 0.22; popupThemeClass = "theme-flood"; }
 
+                var extractedWindText = "60 MPH";
+                var windMatchPattern = /WIND\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
+                if (windMatchPattern && windMatchPattern[1]) extractedWindText = windMatchPattern[1].split('$$')[0].split('&&')[0].trim();
+
+                var extractedHailText = "Penny Size";
+                var hailMatchPattern = /HAIL\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
+                if (hailMatchPattern && hailMatchPattern[1]) extractedHailText = hailMatchPattern[1].split('$$')[0].split('&&')[0].trim();
+
+                var riskThreat = "";
+                var threatMatchPattern = /DAMAGE THREAT\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
+                if (threatMatchPattern && threatMatchPattern[1]) riskThreat = threatMatchPattern[1].split('$$')[0].split('&&')[0].trim();
+
+                // FIXED THREAT FILTER CORRECTION: Removes threat panel completely if NWS tag is defined as "Standard"
+                var riskThreatUpper = (riskThreat || "").toUpperCase();
+                var containsStandardThreatText = riskThreatUpper.includes("STANDARD") || textDumpToValidate.includes("DAMAGE THREAT...STANDARD");
+
+                // FIXED PDS SYNCHRONIZER: If PDS token matches, rewrite polygon stroke hex color directly to purple (#d900d9) system-wide
                 let pdsRedBannerHeaderString = "";
                 if (isParticularlyDangerousSituation) {
                     strokeColor = "#d900d9"; 
@@ -749,23 +769,6 @@
                 var sourceMatchPattern = /SOURCE\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
                 if (sourceMatchPattern && sourceMatchPattern[1]) extractedSourceText = sourceMatchPattern[1].split('$$')[0].split('&&')[0].trim();
 
-                var extractedWindText = "60 MPH";
-                var windMatchPattern = /WIND\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
-                if (windMatchPattern && windMatchPattern[1]) extractedWindText = windMatchPattern[1].split('$$')[0].split('&&')[0].trim();
-
-                var extractedHailText = "Penny Size";
-                var hailMatchPattern = /HAIL\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
-                if (hailMatchPattern && hailMatchPattern[1]) extractedHailText = hailMatchPattern[1].split('$$')[0].split('&&')[0].trim();
-
-                // DYNAMIC DAMAGE THREAT EXTRACTION
-                var riskThreat = "";
-                var threatMatchPattern = /DAMAGE THREAT\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
-                if (threatMatchPattern && threatMatchPattern[1]) riskThreat = threatMatchPattern[1].split('$$')[0].split('&&')[0].trim();
-
-                // CRITICAL FILTER RULE: Drops display variables entirely if NWS tags string contains "STANDARD" info markers
-                var riskThreatUpper = (riskThreat || "").toUpperCase();
-                var containsStandardThreatText = riskThreatUpper.includes("STANDARD") || textDumpToValidate.includes("DAMAGE THREAT...STANDARD");
-
                 let threatBlockMarkupBlock = "";
                 if (riskThreat && !containsStandardThreatText) {
                     threatBlockMarkupBlock = `<div class="popup-glass-block"><span class="title">Damage Threat</span><span class="val">${riskThreat}</span></div>`;
@@ -782,7 +785,6 @@
 
                 let interactivePillGridTemplate = "";
                 if (isTornado) {
-                    // TORNADO MODULAR CONDITIONAL CELL ARRAYS
                     let tornadoThreatMarkupCell = "";
                     if (!containsStandardThreatText) {
                         tornadoThreatMarkupCell = `<div class="popup-glass-block"><span class="title">Damage Threat</span><span class="val">${riskThreat || (isParticularlyDangerousSituation ? 'Catastrophic' : 'Standard')}</span></div>`;
@@ -790,10 +792,8 @@
                     interactivePillGridTemplate = `
                         <div class="popup-glass-block"><span class="title">Tornado</span><span class="val">${extractedHazardText}</span></div>
                         <div class="popup-glass-block"><span class="title">Hail</span><span class="val">${extractedHailText}</span></div>
-                        ${tornadoThreatMarkupCell}
-                        ${pdsRedBannerHeaderString ? '' : ''}`;
+                        ${tornadoThreatMarkupCell}`;
                 } else if (isSevereThunder) {
-                    // SEVERE THUNDERSTORM MODULAR CONDITIONAL CELL ARRAYS
                     let thunderThreatMarkupCell = "";
                     if (!containsStandardThreatText) {
                         thunderThreatMarkupCell = `<div class="popup-glass-block"><span class="title">Damage Threat</span><span class="val">${riskThreat || 'Considerable'}</span></div>`;
