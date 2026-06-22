@@ -325,7 +325,6 @@
             margin-top: 2px;
         }
 
-        /* CONTAINER DESIGN LAYOUTS OVERRIDES Matrix */
         .nws-screenshot-popup-container {
             width: 250px;
             padding: 12px;
@@ -345,7 +344,6 @@
             border: 1px solid #d40404;
         }
         
-        /* UNIFIED PDS THEME ARRAY (PURPLE GRADIENT): Applied dynamically to any PDS layout frame */
         .nws-screenshot-popup-container.theme-pds-tornado,
         .nws-screenshot-popup-container.theme-pds-severe,
         .nws-screenshot-popup-container.theme-pds-flashflood,
@@ -707,48 +705,36 @@
 
                 const coreAdvisoryNarrative = properties.description || "";
 
-                // DETECT PARTICULARLY DANGEROUS SITUATION FLAGS IN PRODUCT STATEMENT
                 var textDumpToValidate = (coreAdvisoryNarrative + " " + (properties.headline || "")).toUpperCase();
                 var isParticularlyDangerousSituation = textDumpToValidate.includes("PARTICULARLY DANGEROUS SITUATION") || textDumpToValidate.includes("PDS ");
 
-                // UNIFIED THEME ASSIGNMENT CONFIGURATION
                 let strokeColor = "#a855f7"; let fillAlpha = 0.20; let popupThemeClass = "theme-severe";
                 let isTornado = eventUpper.includes("TORNADO");
                 let isSevereThunder = eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM");
                 let isFlashFlood = eventUpper.includes("FLASH") && eventUpper.includes("FLOOD");
                 let isStandardFlood = eventUpper.includes("FLOOD") && !eventUpper.includes("FLASH");
 
-                if (isTornado) { 
-                    strokeColor = "#FF0000"; fillAlpha = 0.25; popupThemeClass = "theme-tornado"; 
-                } else if (isSevereThunder) { 
-                    strokeColor = "#FFAA00"; fillAlpha = 0.20; popupThemeClass = "theme-severe"; 
-                } else if (isFlashFlood) { 
-                    strokeColor = "#00FF00"; fillAlpha = 0.22; popupThemeClass = "theme-flashflood"; 
-                } else if (isStandardFlood) { 
-                    strokeColor = "#008000"; fillAlpha = 0.22; popupThemeClass = "theme-flood"; 
-                }
+                if (isTornado) { strokeColor = "#FF0000"; fillAlpha = 0.25; popupThemeClass = "theme-tornado"; }
+                else if (isSevereThunder) { strokeColor = "#FFAA00"; fillAlpha = 0.20; popupThemeClass = "theme-severe"; }
+                else if (isFlashFlood) { strokeColor = "#00FF00"; fillAlpha = 0.22; popupThemeClass = "theme-flashflood"; }
+                else if (isStandardFlood) { strokeColor = "#008000"; fillAlpha = 0.22; popupThemeClass = "theme-flood"; }
 
-                // DYNAMIC SYNCHRONIZER HOOK: If PDS tag is found, force polygon color to deep magenta purple (#d900d9) system-wide
                 let pdsRedBannerHeaderString = "";
                 if (isParticularlyDangerousSituation) {
                     strokeColor = "#d900d9"; 
                     fillAlpha = 0.28;
                     
                     if (isTornado) {
-                        eventName = "PDS Tornado Warning";
-                        popupThemeClass = "theme-pds-tornado";
+                        eventName = "PDS Tornado Warning"; popupThemeClass = "theme-pds-tornado";
                         pdsRedBannerHeaderString = `<div class="pds-top-red-alert-banner">CONFIRMED TORNADO • TAKE SHELTER NOW!</div>`;
                     } else if (isSevereThunder) {
-                        eventName = "PDS Severe Thunderstorm Warning";
-                        popupThemeClass = "theme-pds-severe";
+                        eventName = "PDS Severe Thunderstorm Warning"; popupThemeClass = "theme-pds-severe";
                         pdsRedBannerHeaderString = `<div class="pds-top-red-alert-banner">PDS SEVERE THUNDERSTORM • TAKE COVER NOW!</div>`;
                     } else if (isFlashFlood) {
-                        eventName = "PDS Flash Flood Warning";
-                        popupThemeClass = "theme-pds-flashflood";
+                        eventName = "PDS Flash Flood Warning"; popupThemeClass = "theme-pds-flashflood";
                         pdsRedBannerHeaderString = `<div class="pds-top-red-alert-banner">FLASH FLOOD EMERGENCY • SEEK HIGH GROUND!</div>`;
                     } else {
-                        eventName = "PDS Flood Warning";
-                        popupThemeClass = "theme-pds-flood";
+                        eventName = "PDS Flood Warning"; popupThemeClass = "theme-pds-flood";
                         pdsRedBannerHeaderString = `<div class="pds-top-red-alert-banner">CRITICAL FLOODING EMERGENCY • STAY SAFE!</div>`;
                     }
                 }
@@ -771,9 +757,19 @@
                 var hailMatchPattern = /HAIL\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
                 if (hailMatchPattern && hailMatchPattern[1]) extractedHailText = hailMatchPattern[1].split('$$')[0].split('&&')[0].trim();
 
+                // DYNAMIC DAMAGE THREAT EXTRACTION
                 var riskThreat = "";
                 var threatMatchPattern = /DAMAGE THREAT\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
                 if (threatMatchPattern && threatMatchPattern[1]) riskThreat = threatMatchPattern[1].split('$$')[0].split('&&')[0].trim();
+
+                // CRITICAL FILTER RULE: Drops display variables entirely if NWS tags string contains "STANDARD" info markers
+                var riskThreatUpper = (riskThreat || "").toUpperCase();
+                var containsStandardThreatText = riskThreatUpper.includes("STANDARD") || textDumpToValidate.includes("DAMAGE THREAT...STANDARD");
+
+                let threatBlockMarkupBlock = "";
+                if (riskThreat && !containsStandardThreatText) {
+                    threatBlockMarkupBlock = `<div class="popup-glass-block"><span class="title">Damage Threat</span><span class="val">${riskThreat}</span></div>`;
+                }
 
                 var timeRemainingLabel = "ACTIVE ALERT";
                 if (properties.ends) {
@@ -786,34 +782,40 @@
 
                 let interactivePillGridTemplate = "";
                 if (isTornado) {
+                    // TORNADO MODULAR CONDITIONAL CELL ARRAYS
+                    let tornadoThreatMarkupCell = "";
+                    if (!containsStandardThreatText) {
+                        tornadoThreatMarkupCell = `<div class="popup-glass-block"><span class="title">Damage Threat</span><span class="val">${riskThreat || (isParticularlyDangerousSituation ? 'Catastrophic' : 'Standard')}</span></div>`;
+                    }
                     interactivePillGridTemplate = `
                         <div class="popup-glass-block"><span class="title">Tornado</span><span class="val">${extractedHazardText}</span></div>
                         <div class="popup-glass-block"><span class="title">Hail</span><span class="val">${extractedHailText}</span></div>
-                        <div class="popup-glass-block"><span class="title">Damage Threat</span><span class="val">${riskThreat || (isParticularlyDangerousSituation ? 'Catastrophic' : 'Standard')}</span></div>`;
+                        ${tornadoThreatMarkupCell}
+                        ${pdsRedBannerHeaderString ? '' : ''}`;
                 } else if (isSevereThunder) {
+                    // SEVERE THUNDERSTORM MODULAR CONDITIONAL CELL ARRAYS
+                    let thunderThreatMarkupCell = "";
+                    if (!containsStandardThreatText) {
+                        thunderThreatMarkupCell = `<div class="popup-glass-block"><span class="title">Damage Threat</span><span class="val">${riskThreat || 'Considerable'}</span></div>`;
+                    }
                     interactivePillGridTemplate = `
                         <div class="popup-glass-block"><span class="title">Tornado</span><span class="val">Possible</span></div>
                         <div class="popup-grid-split">
                             <div class="popup-glass-block"><span class="title">Wind</span><span class="val">${extractedWindText}</span></div>
                             <div class="popup-glass-block"><span class="title">Hail</span><span class="val">${extractedHailText}</span></div>
                         </div>
-                        <div class="popup-glass-block"><span class="title">Damage Threat</span><span class="val">${riskThreat || 'Considerable'}</span></div>`;
+                        ${thunderThreatMarkupCell}`;
                 } else if (isFlashFlood) {
-                    let threatBlockMarkup = "";
-                    if (riskThreat) {
-                        threatBlockMarkup = `<div class="popup-glass-block"><span class="title">Damage Threat</span><span class="val">${riskThreat}</span></div>`;
-                    }
                     interactivePillGridTemplate = `
                         <div class="popup-glass-block"><span class="title">Source</span><span class="val">${extractedSourceText}</span></div>
-                        ${threatBlockMarkup}`;
+                        ${threatBlockMarkupBlock}`;
                 } else if (isStandardFlood) {
                     interactivePillGridTemplate = "";
                 }
 
                 L.geoJSON(feature, {
                     pane: 'alertsPane', 
-                    // STROKE AND FILL ATTRIBUTES LINKED DIRECTLY TO THE SYNC ENGINE ABOVE
-                    style: { stroke: true, color: strokeColor, weight: 1.8, opacity: 0.95, fillColor: strokeColor, fillOpacity: fillAlpha },
+                    style: { stroke: true, color: strokeColor, weight: 1.5, opacity: 0.8, fillColor: strokeColor, fillOpacity: fillAlpha },
                     onEachFeature: function(f, layer) {
                         layer.bindPopup(`
                             <div class="nws-screenshot-popup-container ${popupThemeClass}">
