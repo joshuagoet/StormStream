@@ -296,6 +296,13 @@
             border-radius: 50%;
         }
 
+        .sidebar-scroll-feed {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 0 14px 14px 14px;
+            box-sizing: border-box;
+        }
+
         .sidebar-feed-card {
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             padding: 10px 0;
@@ -326,7 +333,7 @@
             margin-top: 1px;
         }
 
-        /* CUSTOM POPUP DESIGN SYSTEM MATCHING SCREENSHOT 2026-06-21 202603.png */
+        /* CUSTOM CONTALNER POPUP STRUCTURES MAPPED DIRECTLY FROM TEMPLATES */
         .nws-screenshot-popup-container {
             width: 250px;
             padding: 12px;
@@ -501,6 +508,22 @@
             padding: 24px 26px; overflow-y: auto; color: #ffffff; 
             font-family: 'Courier New', Courier, monospace; font-size: 13px;
             white-space: pre-wrap; background: #1c263b; 
+        }
+
+        /* RESTORED SPEC APPLIED: Forces DBZ layout anchors above absolute screen spaces */
+        #dbz-legend {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw; 
+            z-index: 999999 !important;
+            background: rgba(10, 11, 15, 0.96);
+            border-bottom: 2px solid #2a2c35;
+            padding: 6px 0 4px 0; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: auto;
         }
     </style>
 </head>
@@ -756,7 +779,6 @@
 
                 activeNwsTextMapCache[alertId] = { title: eventName, text: coreAdvisoryNarrative.trim() };
 
-                // RESTORED OUTLINE STROKE VALUES: Swapped stroke: false back to true with native matching hex weights
                 let interactivePillGridTemplate = "";
                 if (isTornado) {
                     interactivePillGridTemplate = `
