@@ -30,7 +30,6 @@
             z-index: 10000000 !important;
         }
 
-        /* FIXED STYLING OVERRIDES: Removes default Leaflet white container blocks */
         .leaflet-popup-content-wrapper {
             background: transparent !important;
             box-shadow: none !important;
@@ -326,7 +325,7 @@
             margin-top: 2px;
         }
 
-        /* CARD CONTAINERS GRADIENTS OVERLAYSSTYLE */
+        /* POPUP THEME CONTAINERS DEFINITIONS MAPPED FROM THE SCREENSHOTS */
         .nws-screenshot-popup-container {
             width: 250px;
             padding: 12px;
@@ -335,6 +334,7 @@
             font-family: Arial, sans-serif;
             position: relative;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            overflow: hidden;
         }
         .nws-screenshot-popup-container.theme-severe {
             background: linear-gradient(135deg, #7c8803 0%, #4e5501 100%);
@@ -344,6 +344,31 @@
             background: linear-gradient(135deg, #b90202 0%, #6e0101 100%);
             border: 1px solid #d40404;
         }
+        
+        /* RE-ENGINEERED PDS PURPLE OVERLAY THEME SPEC: Mapped directly from Screenshot 2026-06-21 212307.png */
+        .nws-screenshot-popup-container.theme-pds-tornado {
+            background: linear-gradient(135deg, #a200a2 0%, #4a004e 100%);
+            border: 1px solid #d900d9;
+            padding-top: 28px !important; /* Adds room to nest absolute banner cleanly inside card space bounds */
+        }
+        
+        /* PARTICULARLY DANGEROUS SITUATION TOP RED HEADER BANNER SPEC */
+        .pds-top-red-alert-banner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: #cc0000;
+            color: #ffffff;
+            font-weight: 900;
+            font-size: 8.5px;
+            text-align: center;
+            padding: 4px 0;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #ff4d4d;
+        }
+
         .nws-screenshot-popup-container.theme-flashflood {
             background: linear-gradient(135deg, #10b981 0%, #065f46 100%);
             border: 1px solid #10b981;
@@ -460,21 +485,6 @@
             text-transform: uppercase;
         }
 
-        .pds-danger-alert-box {
-            background: #dc2626 !important;
-            color: #ffffff !important;
-            font-weight: 900 !important;
-            font-size: 10px !important;
-            text-align: center !important;
-            padding: 6px 8px !important;
-            border-radius: 4px !important;
-            margin-top: 6px !important;
-            letter-spacing: 0.3px !important;
-            line-height: 1.3 !important;
-            border: 1px dashed #ffffff !important;
-            text-transform: uppercase !important;
-        }
-
         #dbz-legend {
             position: absolute;
             top: 0;
@@ -561,10 +571,10 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
-        // GLOBAL COMPILATION SCOPE: Fixed safely at high execution priority tiers
         var map;
         var playbackActive = true;
         var masterAlertFeatures = [];
+        var instantAlertCount = 0;
         var radarLayers = [];
         var radarFramesPaths = []; 
         var currentRadarIndex = 0;
@@ -576,7 +586,6 @@
         var animationIntervalId = null;
         var activeNwsTextMapCache = {}; 
 
-        // CRITICAL STABILITY CONFIGURATION: Hardcoded coordinate tracking vectors to prevent ocean viewport resets
         var centerLat = 38.9742;
         var centerLng = -90.9664;
 
@@ -589,7 +598,6 @@
         ];
 
         window.onload = function() {
-            // FIXED RESOLUTION VECTOR: Hardcoded center anchors mapped directly into viewport tracking configurations
             map = L.map('map', {
                 center: [centerLat, centerLng],
                 zoom: 5, minZoom: 3, maxZoom: 18, zoomControl: false
@@ -601,7 +609,7 @@
             map.createPane('singleSitePane').style.zIndex = 400;
             map.getPane('singleSitePane').className += ' radar-broadcast-pane';
             
-            map.createPane('alertsPane').style.zIndex = 700;
+            map.createPane('alertsPane').style.zIndex = 300; // Map outlines overlay directly below radar sweeps layers
             map.createPane('labelsPane').style.zIndex = 800;
 
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', { pane: 'tilePane', opacity: 0.18 }).addTo(map);
@@ -633,7 +641,6 @@
         }
 
         function loadWeatherAlertPipeline() {
-            // FIXED ENVELOPE: Embedded active User-Agent strings to prevent header-rejection bugs on NWS servers
             fetch("https://api.weather.gov/alerts/active?status=actual", {
                 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) StormStream/1.0' }
             })
@@ -692,7 +699,7 @@
             masterAlertFeatures.forEach(feature => {
                 if (!feature.geometry || !feature.geometry.coordinates) return;
                 const properties = feature.properties || {};
-                const eventName = properties.event || "Weather Event";
+                let eventName = properties.event || "Weather Event";
                 const eventUpper = eventName.toUpperCase();
                 const alertId = properties.id || Math.random().toString();
 
@@ -710,12 +717,15 @@
                 const parsedSectors = properties.areaDesc ? properties.areaDesc.split(';')[0] : "Regional Sector";
                 const coreAdvisoryNarrative = properties.description || "";
 
+                // RE-ENGINEERED DYNAMIC PDS NOTIFICATION VALIDATION ROUTINE
                 var textDumpToValidate = (coreAdvisoryNarrative + " " + (properties.headline || "")).toUpperCase();
                 var isParticularlyDangerousSituation = textDumpToValidate.includes("PARTICULARLY DANGEROUS SITUATION") || textDumpToValidate.includes("PDS ");
                 
-                let pdsCalloutMarkupBlock = "";
+                let pdsRedBannerHeaderString = "";
                 if (isTornado && isParticularlyDangerousSituation) {
-                    pdsCalloutMarkupBlock = `<div class="pds-danger-alert-box">THIS IS A PARTICULARLY DANGEROUS SITUATION... TAKE COVER NOW!</div>`;
+                    eventName = "PDS Tornado Warning"; // Overrides text inside title node
+                    popupThemeClass = "theme-pds-tornado"; // Changes structural container colors array to purple gradient
+                    pdsRedBannerHeaderString = `<div class="pds-top-red-alert-banner">CONFIRMED TORNADO • TAKE SHELTER NOW!</div>`;
                 }
 
                 var extractedHazardText = "Radar Indicated";
@@ -752,7 +762,7 @@
                     interactivePillGridTemplate = `
                         <div class="popup-glass-block"><span class="title">Tornado</span><span class="val">${extractedHazardText}</span></div>
                         <div class="popup-glass-block"><span class="title">Hail</span><span class="val">${extractedHailText}</span></div>
-                        ${pdsCalloutMarkupBlock}`;
+                        <div class="popup-glass-block"><span class="title">Damage Threat</span><span class="val">${riskThreat || (isParticularlyDangerousSituation ? 'Considerable' : 'Standard')}</span></div>`;
                 } else if (isSevereThunder) {
                     interactivePillGridTemplate = `
                         <div class="popup-glass-block"><span class="title">Tornado</span><span class="val">Possible</span></div>
@@ -779,6 +789,7 @@
                     onEachFeature: function(f, layer) {
                         layer.bindPopup(`
                             <div class="nws-screenshot-popup-container ${popupThemeClass}">
+                                ${pdsRedBannerHeaderString}
                                 <div class="popup-header-title">${eventName}</div>
                                 <div class="popup-header-expiry">${timeRemainingLabel}</div>
                                 <div class="popup-timeline-track"><div class="popup-timeline-fill"></div></div>
