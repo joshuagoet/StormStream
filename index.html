@@ -383,19 +383,134 @@
             overflow: hidden;
         }
 
-        .nws-severe-popup {
-            background: rgba(15, 16, 20, 0.96);
-            border: 2px solid rgba(210, 225, 40, 0.9);
-            border-radius: 8px;
-            padding: 12px 14px;
+        /* SCREENSHOT 2026-06-21 192620.png ALIGNED POP-UP DOM STRUCTURES */
+        .nws-screenshot-popup-container {
+            width: 250px;
+            padding: 12px;
+            border-radius: 4px;
             color: #ffffff;
-            width: 280px;
             font-family: Arial, sans-serif;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             position: relative;
         }
+        .nws-screenshot-popup-container.theme-severe {
+            background: linear-gradient(135deg, #7c8803 0%, #4e5501 100%);
+            border: 1px solid #99a605;
+        }
+        .nws-screenshot-popup-container.theme-tornado {
+            background: linear-gradient(135deg, #b90202 0%, #6e0101 100%);
+            border: 1px solid #d40404;
+        }
+        
+        .popup-header-title {
+            font-size: 15px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            line-height: 1.2;
+        }
+        .popup-header-expiry {
+            font-size: 9.5px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.75);
+            margin-top: 2px;
+        }
+        
+        .popup-timeline-track {
+            height: 2px;
+            background: rgba(255, 255, 255, 0.2);
+            margin: 6px 0 8px 0;
+            border-radius: 1px;
+            overflow: hidden;
+        }
+        .popup-timeline-fill {
+            height: 100%;
+            background: #ffffff;
+            width: 65%;
+        }
 
-        /* DYNAMIC PDS NOTIFICATION TEXT CALLOUT CLASS */
+        .popup-row-counties {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 6px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        .popup-row-counties span.label {
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 9px;
+        }
+        .popup-row-counties span.label::before {
+            content: "●";
+            font-size: 8px;
+            color: #ffffff;
+        }
+        .popup-row-counties span.names {
+            font-weight: bold;
+            text-align: right;
+            max-width: 140px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .popup-glass-block {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            padding: 5px;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+        .popup-glass-block span.title {
+            display: block;
+            font-size: 8px;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 0.3px;
+        }
+        .popup-glass-block span.val {
+            display: block;
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 1px;
+        }
+
+        .popup-grid-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+        }
+
+        .popup-action-btn-row {
+            margin-top: 6px;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .popup-txt-trigger {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            font-size: 9px;
+            font-weight: bold;
+            padding: 3px 6px;
+            border-radius: 2px;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        .popup-txt-trigger:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
         .pds-danger-alert-box {
             background: #dc2626 !important;
             color: #ffffff !important;
@@ -647,7 +762,7 @@
             { id: "ltg", lat: 36.16, lon: -86.68, name: "Nashville, TN" },
             { id: "lwx", lat: 38.98, lon: -77.48, name: "Washington DC, VA" },
             { id: "lzk", lat: 34.84, lon: -92.26, name: "Little Rock, AR" },
-            { id: "maf", lat: 31.94, lon: -102.19, name: "Middle/Odessa, TX" },
+            { id: "maf", lat: 31.94, lon: -102.19, name: "Midland/Odessa, TX" },
             { id: "max", lat: 42.08, lon: -122.90, name: "Medford, OR" },
             { id: "mbx", lat: 48.39, lon: -100.86, name: "Minot AFB, ND" },
             { id: "mci", lat: 39.30, lon: -94.71, name: "Kansas City, MO" },
@@ -732,52 +847,6 @@
             { id: "wtc", lat: 35.41, lon: -97.74, name: "Will Rogers, OK" },
             { id: "yux", lat: 32.66, lon: -114.61, name: "Yuma, AZ" }
         ];
-
-        window.onload = function() {
-            map = L.map('map', {
-                center: [centerLat, centerLng],
-                zoom: 5, 
-                minZoom: 3,
-                maxZoom: 18, 
-                zoomControl: false
-            });
-
-            map.createPane('tilePane').style.zIndex = 200;
-            map.createPane('usMosaicPane').style.zIndex = 390;
-            map.getPane('usMosaicPane').className += ' radar-broadcast-pane mrms-color-matrix';
-            map.createPane('singleSitePane').style.zIndex = 400;
-            map.getPane('singleSitePane').className += ' radar-broadcast-pane';
-            
-            map.createPane('alertsPane').style.zIndex = 700;
-            map.createPane('labelsPane').style.zIndex = 800;
-
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
-                pane: 'tilePane',
-                opacity: 0.18,
-                maxNativeZoom: 12,
-                maxZoom: 18
-            }).addTo(map);
-
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
-                pane: 'labelsPane',
-                pointerEvents: 'none',
-                opacity: 0.85,
-                maxNativeZoom: 12,
-                maxZoom: 18
-            }).addTo(map);
-
-            polygonAlertGroup = L.layerGroup().addTo(map);
-
-            assembleCompleteNEXRADMenu();
-            initRainViewerRadar();
-            loadWeatherAlertPipeline();
-
-            map.on('zoomend move moveend', recalibratePerimeterGradientMask);
-
-            document.addEventListener("visibilitychange", function() {
-                if (!document.hidden) loadWeatherAlertPipeline();
-            });
-        };
 
         function toggleTopLeftControlPanel() {
             var panel = document.getElementById('hud-panel');
@@ -970,7 +1039,7 @@
                 if (eventUpper.includes("WATCH") || eventUpper.includes("ADVISORY")) return;
 
                 let strokeColor = "#a855f7"; let strokeWeight = 2.0; let fillAlpha = 0.15; 
-                let popupThemeClass = "";
+                let popupThemeClass = "theme-severe";
 
                 let isFloodWarning = eventUpper.includes("FLOOD") && !eventUpper.includes("FLASH");
                 let isFlashFloodWarning = eventUpper.includes("FLASH FLOOD");
@@ -978,19 +1047,18 @@
 
                 if (isTornadoWarning) {
                     strokeColor = "#FF0000"; strokeWeight = 3.5; fillAlpha = 0.25;
-                    popupThemeClass = "tornado-warning-popup";
+                    popupThemeClass = "theme-tornado";
                 } else if (eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM")) {
                     strokeColor = "#FFAA00"; strokeWeight = 2.5; fillAlpha = 0.15;
-                    popupThemeClass = "severe-thunderstorm-popup";
+                    popupThemeClass = "theme-severe";
                 } else if (isFloodWarning || isFlashFloodWarning) {
                     strokeColor = "#00FF00"; strokeWeight = 2.5; fillAlpha = 0.15;
-                    popupThemeClass = "flood-warning-popup";
+                    popupThemeClass = "theme-severe";
                 }
 
                 const parsedSectors = (properties.areaDesc || "Regional Sector").split(';')[0];
                 const coreAdvisoryNarrative = properties.description || "";
 
-                // PDS INTERCEPT LOGIC: Checks both narrative strings for Particularly Dangerous Situation tokens
                 var textDumpToValidate = (coreAdvisoryNarrative + " " + (properties.headline || "")).toUpperCase();
                 var isParticularlyDangerousSituation = textDumpToValidate.includes("PARTICULARLY DANGEROUS SITUATION") || textDumpToValidate.includes("PDS ");
                 
@@ -999,22 +1067,26 @@
                     pdsCalloutMarkupBlock = `<div class="pds-danger-alert-box">THIS IS A PARTICULARLY DANGEROUS SITUATION... TAKE COVER NOW!</div>`;
                 }
 
-                var extractedHazardText = "Radar indicated.";
-                var extractedSourceText = "Radar indicated.";
-
+                // REGEX TEXT PRODUCT ENGINE PARSERS
+                var extractedHazardText = "Radar Indicated";
                 var hazardMatchPattern = /HAZARD\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
                 if (hazardMatchPattern && hazardMatchPattern[1]) {
                     extractedHazardText = hazardMatchPattern[1].split('$$')[0].split('&&')[0].trim();
                 }
 
-                var sourceMatchPattern = /SOURCE\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
-                if (sourceMatchPattern && sourceMatchPattern[1]) {
-                    extractedSourceText = sourceMatchPattern[1].split('$$')[0].split('&&')[0].trim();
+                var extractedWindText = "60 MPH";
+                var windMatchPattern = /WIND\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
+                if (windMatchPattern && windMatchPattern[1]) {
+                    extractedWindText = windMatchPattern[1].split('$$')[0].split('&&')[0].trim();
                 }
 
-                if (extractedHazardText.includes("SOURCE...")) extractedHazardText = extractedHazardText.split("SOURCE...")[0].trim();
-                if (extractedHazardText.includes("IMPACT...")) extractedHazardText = extractedHazardText.split("IMPACT...")[0].trim();
-                if (extractedSourceText.includes("IMPACT...")) extractedSourceText = extractedSourceText.split("IMPACT...")[0].trim();
+                var extractedHailText = "<0.75\" - Penny";
+                var hailMatchPattern = /HAIL\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
+                if (hailMatchPattern && hailMatchPattern[1]) {
+                    extractedHailText = hailMatchPattern[1].split('$$')[0].split('&&')[0].trim();
+                } else if (properties.maxHailSize) {
+                    extractedHailText = properties.maxHailSize;
+                }
 
                 var riskThreat = "Considerable";
                 var threatMatchPattern = /DAMAGE THREAT\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
@@ -1023,13 +1095,12 @@
                 } else if (isTornadoWarning) {
                     riskThreat = isParticularlyDangerousSituation ? "Catastrophic" : "Extreme";
                 }
-                var riskThreatUpper = riskThreat.toUpperCase();
 
                 var timeRemainingLabel = "Active Alert";
                 if (properties.ends) {
                     var endTimestamp = new Date(properties.ends).getTime();
                     var durationMinutesDiff = Math.ceil((endTimestamp - Date.now()) / (1000 * 60));
-                    if (durationMinutesDiff > 0) timeRemainingLabel = `Expires in ${durationMinutesDiff} Min`;
+                    if (durationMinutesDiff > 0) timeRemainingLabel = `EXPIRES IN ${durationMinutesDiff} MIN`;
                 }
 
                 var dynamicWmoToken = properties.wmoIdentifier ? properties.wmoIdentifier.trim() : "NWS PRODUCT REPORT";
@@ -1040,38 +1111,41 @@
                     text: compiledRawTextReport
                 };
 
-                let popupInnerTemplateMarkup = "";
-                if (isFloodWarning) {
-                    popupInnerTemplateMarkup = `<div class="nws-pill-row"><b>Counties</b>${parsedSectors}</div>`;
-                } else if (isFlashFloodWarning) {
-                    let showThreatBlocks = (riskThreatUpper.includes("CONSIDERABLE") || riskThreatUpper.includes("CATASTROPHIC") || riskThreatUpper.includes("EXTREME"));
-                    if (showThreatBlocks) {
-                        popupInnerTemplateMarkup = `
-                            <div class="nws-pill-row"><b>Counties</b>${parsedSectors}</div>
-                            <div class="nws-grid-badges">
-                                <div class="nws-badge-block"><span>Source</span>${extractedSourceText}</div>
-                                <div class="nws-badge-block"><span>Damage Threat</span>${riskThreat}</div>
-                            </div>`;
-                    } else {
-                        popupInnerTemplateMarkup = `<div class="nws-pill-row"><b>Counties</b>${parsedSectors}</div>`;
-                    }
-                } else if (isTornadoWarning) {
-                    var hailSizeValue = properties.maxHailSize || "Quarter (1.00\")";
-                    popupInnerTemplateMarkup = `
-                        <div class="nws-pill-row"><b>Counties</b>${parsedSectors}</div>
-                        <div class="nws-grid-badges">
-                            <div class="nws-badge-block"><span>Source</span>${extractedSourceText}</div>
-                            <div class="nws-badge-block"><span>Max Hail</span>${hailSizeValue}</div>
+                // DYNAMIC LAYOUT MODULAR HOOK GENERATOR - SCREENSHOT 2026-06-21 192620.png SPEC
+                let interactivePillGridTemplate = "";
+                if (isTornadoWarning) {
+                    interactivePillGridTemplate = `
+                        <div class="popup-glass-block">
+                            <span class="title">Tornado</span>
+                            <span class="val">${extractedHazardText}</span>
                         </div>
-                        ${pdsCalloutMarkupBlock}`;
+                        <div class="popup-glass-block">
+                            <span class="title">Hail</span>
+                            <span class="val">${extractedHailText}</span>
+                        </div>
+                        ${pdsCalloutMarkupBlock}
+                    `;
                 } else {
-                    popupInnerTemplateMarkup = `
-                        <div class="nws-pill-row"><b>Counties</b>${parsedSectors}</div>
-                        <div class="nws-grid-badges">
-                            <div class="nws-badge-block"><span>Source</span>${extractedSourceText}</div>
-                            <div class="nws-badge-block"><span>Damage Threat</span>${riskThreat}</div>
+                    interactivePillGridTemplate = `
+                        <div class="popup-glass-block">
+                            <span class="title">Tornado</span>
+                            <span class="val">Possible</span>
                         </div>
-                        <div class="nws-pill-row" style="margin-top: 4px;"><b>Hazard</b>${extractedHazardText}</div>`;
+                        <div class="popup-grid-split">
+                            <div class="popup-glass-block">
+                                <span class="title">Wind</span>
+                                <span class="val">${extractedWindText}</span>
+                            </div>
+                            <div class="popup-glass-block">
+                                <span class="title">Hail</span>
+                                <span class="val">${extractedHailText}</span>
+                            </div>
+                        </div>
+                        <div class="popup-glass-block">
+                            <span class="title">Damage Threat</span>
+                            <span class="val">${riskThreat}</span>
+                        </div>
+                    `;
                 }
 
                 L.geoJSON(feature, {
@@ -1079,16 +1153,23 @@
                     style: { color: strokeColor, weight: strokeWeight, fillColor: strokeColor, fillOpacity: fillAlpha },
                     onEachFeature: function(f, layer) {
                         layer.bindPopup(`
-                            <div class="nws-severe-popup" style="border-color: ${strokeColor} !important;">
-                                <div class="nws-header-container">
-                                    <div class="nws-title-badge" style="color: ${strokeColor} !important;">${eventName}</div>
-                                    <button class="nws-info-trigger" onclick="launchNwsTextStatementModal('${alertId}')">ⓘ</button>
+                            <div class="nws-screenshot-popup-container ${popupThemeClass}">
+                                <div class="popup-header-title">${eventName}</div>
+                                <div class="popup-header-expiry">${timeRemainingLabel}</div>
+                                <div class="popup-timeline-track"><div class="popup-timeline-fill"></div></div>
+                                
+                                <div class="popup-row-counties">
+                                    <span class="label">Counties</span>
+                                    <span class="names" title="${parsedSectors}">${parsedSectors}</span>
                                 </div>
-                                <div class="nws-expiry-subtitle">${timeRemainingLabel}</div>
-                                <div class="nws-countdown-track"><div class="nws-countdown-fill"></div></div>
-                                ${popupInnerTemplateMarkup}
+
+                                ${interactivePillGridTemplate}
+
+                                <div class="popup-action-btn-row">
+                                    <button class="popup-txt-trigger" onclick="launchNwsTextStatementModal('${alertId}')">View Text</button>
+                                </div>
                             </div>
-                        `, { maxWidth: 310, closeButton: false });
+                        `, { maxWidth: 280, closeButton: false });
                     }
                 }).addTo(polygonAlertGroup);
             });
@@ -1127,41 +1208,6 @@
             currentRadarIndex = (currentRadarIndex + 1) % radarLayers.length;
             radarLayers[currentRadarIndex].setOpacity(0.85);
         }
-
-        function togglePlayback() {
-            playbackActive = !playbackActive;
-            document.getElementById('play-btn').innerText = playbackActive ? "PAUSE" : "RESUME";
-        }
-
-        function assembleCompleteNEXRADMenu() {
-            const dropdown = document.getElementById('radar-station-dropdown');
-            if (!dropdown) return;
-            dropdown.innerHTML = ""; 
-            fullUSRadarDictionary.sort((a, b) => a.name.localeCompare(b.name));
-            fullUSRadarDictionary.forEach(station => {
-                let node = document.createElement('option');
-                node.value = station.id;
-                node.setAttribute('data-lat', station.lat);
-                node.setAttribute('data-lon', station.lon);
-                node.text = `${station.name} (K${station.id.toUpperCase()})`;
-                dropdown.appendChild(node);
-            });
-            dropdown.value = "lsx"; 
-        }
-
-        function executeLocalTargetReset() {
-            var locationInput = document.getElementById('city-search-input').value.trim();
-            if(locationInput === "") return;
-
-            fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(locationInput), { headers: { 'User-Agent': 'StormStream/1.0' } })
-                .then(res => res.json())
-                .then(resData => {
-                    if(resData && resData.length > 0) {
-                        map.setView([parseFloat(resData[0].lat), parseFloat(resData[0].lon)], 6);
-                    }
-                }).catch(() => {});
-        }
     </script>
 </body>
 </html>
-```_
