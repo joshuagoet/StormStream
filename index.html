@@ -309,33 +309,6 @@
             border-radius: 50%;
         }
 
-        .sidebar-filter-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 4px;
-            margin: 0 14px 12px 14px;
-        }
-
-        .filter-grid-pill {
-            font-size: 8px;
-            font-weight: 900;
-            color: #000000;
-            text-align: center;
-            padding: 4px 0;
-            border-radius: 2px;
-            text-transform: uppercase;
-            cursor: pointer;
-            opacity: 0.85;
-            transition: opacity 0.15s ease;
-        }
-        .filter-grid-pill:hover { opacity: 1; }
-        .filter-pill-severe { background: #ef4444; }
-        .filter-pill-winter { background: #3b82f6; }
-        .filter-pill-hydro { background: #10b981; }
-        .filter-pill-nonprecip { background: #f59e0b; }
-        .filter-pill-marine { background: #06b6d4; }
-        .filter-pill-tropical { background: #ec4899; }
-
         .sidebar-scroll-feed {
             flex-grow: 1;
             overflow-y: auto;
@@ -372,18 +345,7 @@
             color: #8895b3;
             margin-top: 1px;
         }
-        .sidebar-feed-card .card-narrative {
-            font-size: 10px;
-            color: #94a3b8;
-            line-height: 1.4;
-            margin-top: 4px;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
 
-        /* CARD OVERLAY SYSTEM - SCREENSHOT TEMPLATES APPIED */
         .nws-screenshot-popup-container {
             width: 250px;
             padding: 12px;
@@ -399,6 +361,14 @@
         .nws-screenshot-popup-container.theme-tornado {
             background: linear-gradient(135deg, #b90202 0%, #6e0101 100%);
             border: 1px solid #d40404;
+        }
+        .nws-screenshot-popup-container.theme-flashflood {
+            background: linear-gradient(135deg, #10b981 0%, #065f46 100%);
+            border: 1px solid #10b981;
+        }
+        .nws-screenshot-popup-container.theme-flood {
+            background: linear-gradient(135deg, #065f46 0%, #022c22 100%);
+            border: 1px solid #047857;
         }
         
         .popup-header-title {
@@ -507,9 +477,6 @@
             cursor: pointer;
             text-transform: uppercase;
         }
-        .popup-txt-trigger:hover {
-            background: rgba(255, 255, 255, 0.25);
-        }
 
         .pds-danger-alert-box {
             background: #dc2626 !important;
@@ -525,6 +492,34 @@
             border: 1px dashed #ffffff !important;
             text-transform: uppercase !important;
         }
+
+        #raw-text-modal-backdrop {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.6); 
+            z-index: 2000000 !important; 
+            display: none;
+            align-items: center; justify-content: center;
+        }
+        #raw-text-modal-window {
+            background: #1c263b !important; 
+            border: 1px solid #2a364d !important;
+            width: 650px !important; max-width: 94vw; max-height: 80vh !important; 
+            display: flex !important; flex-direction: column !important;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.7) !important;
+            overflow: hidden !important; border-radius: 5px !important; 
+        }
+        .modal-header-bar {
+            padding: 14px 20px; background: #161c2d;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex; justify-content: space-between; align-items: center;
+            color: #ffffff; font-weight: bold; font-size: 13px; text-transform: uppercase;
+        }
+        .modal-body-content {
+            padding: 24px 26px; overflow-y: auto; color: #ffffff; 
+            font-family: 'Courier New', Courier, monospace; font-size: 13px;
+            white-space: pre-wrap; background: #1c263b; 
+        }
     </style>
 </head>
 <body>
@@ -535,9 +530,9 @@
         <div id="raw-text-modal-window" onclick="event.stopPropagation()">
             <div class="modal-header-bar">
                 <span id="modal-title-element">NWS METEOROLOGICAL PRODUCT</span>
-                <button class="modal-close-btn" onclick="closeNwsTextStatementModal()">✕</button>
+                <button style="background:transparent; border:none; color:#fff; font-size:20px; cursor:pointer;" onclick="closeNwsTextStatementModal()">✕</button>
             </div>
-            <div id="modal-body-element" class="modal-body-content">Loading product statements...</div>
+            <div id="modal-body-element" class="modal-body-content">Loading statement data...</div>
         </div>
     </div>
 
@@ -547,19 +542,10 @@
             <div class="live-pulse-dot"></div>
             Live Counter: <span id="sidebar-counter-string">0</span> Active Hazards National
         </div>
-        <div class="sidebar-filter-grid">
-            <div class="filter-grid-pill filter-pill-severe">Severe</div>
-            <div class="filter-grid-pill filter-pill-winter">Winter</div>
-            <div class="filter-grid-pill filter-pill-hydro">Hydro</div>
-            <div class="filter-grid-pill filter-pill-nonprecip">Non-Precip</div>
-            <div class="filter-grid-pill filter-pill-marine">Marine</div>
-            <div class="filter-grid-pill filter-pill-tropical">Tropical</div>
-        </div>
         <div class="sidebar-scroll-feed" id="sidebar-feed-container"></div>
     </div>
 
     <div style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; pointer-events: none;">
-
         <div id="menu-toggle-trigger" onclick="toggleTopLeftControlPanel()">
             <div class="hamburger-line"></div>
             <div class="hamburger-line"></div>
@@ -572,31 +558,18 @@
         </div>
 
         <div id="hud-panel" class="collapsed">
-            <div class="brand-container">
-                <h1>StormStream</h1>
-            </div>
-
+            <div class="brand-container"><h1>StormStream</h1></div>
             <div id="alert-banner">
                 <b>Forecast Highlights</b>
-                <div>.KEY MESSAGES...</div>
-                <div style="margin-top: 4px;">- Thunderstorms are anticipated across the area this morning
-                                                through tonight. Some storms may be strong to severe this
-                                                afternoon/evening with the main threats being tornadoes,
-                                                damaging winds, and large hail. </div>
-                <div style="margin-top: 4px;">- Locally heavy rainfall potentially leading to flash flooding is
-                                                also expected this morning into tonight.</div>
-                <div style="margin-top: 4px;">- Seasonably cool conditions are forecast this week.</div>
+                <div>Active hazards tracking enabled loop cycles.</div>
             </div>
-
             <div class="radar-type-grid">
                 <button id="radar-us-btn" class="radar-select-btn active" onclick="switchRadarMode('national')">MRMS</button>
                 <button id="radar-site-btn" class="radar-select-btn" onclick="switchRadarMode('single')">Single-Site</button>
             </div>
-
             <div id="station-toggle-box" class="station-selector-wrapper">
                 <select id="radar-station-dropdown" onchange="executeStationChangeToggle()"></select>
             </div>
-
             <div class="search-container">
                 <input type="text" id="city-search-input" value="Lincoln County, MO">
                 <button id="search-btn" onclick="executeLocalTargetReset()">Go</button>
@@ -610,12 +583,11 @@
         <div id="dbz-legend">
             <div style="width: 100vw;">
                 <div class="gradient-bar"></div>
-                <div style="display: flex; justify-content: space-between; width: 100%; box-sizing: border-box; padding: 4px 10px; font-family: monospace; font-size: 10.5px; font-weight: bold; color: #aaa; letter-spacing: 0.2px;">
-                    <div>0 dBZ</div><div>10 dBZ</div><div>20 dBZ</div><div>30 dBZ</div><div>40 dBZ</div><div>50 dBZ</div><div>60 dBZ</div><div>70 dBZ</div><div>80 dBZ</div><div>90 dBZ</div><div>100 dBZ</div>
+                <div style="display: flex; justify-content: space-between; width: 100%; box-sizing: border-box; padding: 4px 10px; font-family: monospace; font-size: 10.5px; font-weight: bold; color: #aaa;">
+                    <div>0 dBZ</div><div>20 dBZ</div><div>40 dBZ</div><div>60 dBZ</div><div>80 dBZ</div><div>100 dBZ</div>
                 </div>
             </div>
         </div>
-
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -623,7 +595,6 @@
         var map;
         var playbackActive = true;
         var masterAlertFeatures = [];
-        var instantAlertCount = 0;
         var radarLayers = [];
         var radarFramesPaths = []; 
         var currentRadarIndex = 0;
@@ -635,227 +606,18 @@
         var animationIntervalId = null;
         var activeNwsTextMapCache = {}; 
 
-        var centerLat = 38.9742;
-        var centerLng = -90.9664;
-
-        // FIXED ARRAY INTEGRITY BLOCK: Fully qualified dictionary list to avoid compilation breaks during dropdown assembly loops
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
-            { id: "aby", lat: 31.53, lon: -84.14, name: "Albany, GA" },
-            { id: "act", lat: 31.37, lon: -97.38, name: "Waco, TX" },
-            { id: "ahg", lat: 60.73, lon: -151.35, name: "Kenai, AK" },
-            { id: "aiw", lat: 46.84, lon: -68.03, name: "Caribou, ME" },
-            { id: "akq", lat: 36.98, lon: -77.01, name: "Wakefield, VA" },
-            { id: "ama", lat: 35.23, lon: -101.71, name: "Amarillo, TX" },
-            { id: "amx", lat: 34.61, lon: -86.77, name: "Huntsville, AL" },
-            { id: "apx", lat: 44.91, lon: -84.72, name: "Gaylord, MI" },
-            { id: "arx", lat: 43.82, lon: -91.19, name: "La Crosse, WI" },
-            { id: "atx", lat: 48.19, lon: -122.49, name: "Seattle, WA" },
-            { id: "avl", lat: 35.43, lon: -82.55, name: "Asheville, NC" },
-            { id: "avx", lat: 33.29, lon: -118.42, name: "Catalina Island, CA" },
-            { id: "axc", lat: 40.56, lon: -104.14, name: "Greeley, CO" },
-            { id: "bbx", lat: 39.50, lon: -121.63, name: "Beale AFB, CA" },
-            { id: "bgm", lat: 42.20, lon: -75.98, name: "Binghamton, NY" },
-            { id: "bho", lat: 42.21, lon: -71.14, name: "Boston, MA" },
-            { id: "biw", lat: 45.71, lon: -108.61, name: "Billings, MT" },
-            { id: "bix", lat: 30.41, lon: -88.92, name: "Keesler AFB, MS" },
-            { id: "bld", lat: 35.99, lon: -114.89, name: "Las Vegas, NV" },
-            { id: "bmx", lat: 33.17, lon: -86.77, name: "Birmingham, AL" },
-            { id: "box", lat: 41.93, lon: -71.14, name: "Taunton, MA" },
-            { id: "bro", lat: 25.92, lon: -97.42, name: "Brownsville, TX" },
-            { id: "bwi", lat: 39.18, lon: -76.67, name: "Baltimore, MD" },
-            { id: "byx", lat: 24.60, lon: -81.70, name: "Key West, FL" },
-            { id: "cae", lat: 33.95, lon: -81.12, name: "Columbia, SC" },
-            { id: "cbw", lat: 46.03, lon: -67.80, name: "Houlton, ME" },
-            { id: "cbx", lat: 42.92, lon: -116.23, name: "Boise, ID" },
-            { id: "ccx", lat: 40.92, lon: -77.98, name: "State College, PA" },
-            { id: "cle", lat: 41.41, lon: -81.86, name: "Cleveland, OH" },
-            { id: "clt", lat: 35.21, lon: -80.94, name: "Charlotte, NC" },
-            { id: "cmh", lat: 40.00, lon: -82.89, name: "Columbus, OH" },
-            { id: "cly", lat: 45.34, lon: -121.98, name: "Mt. Hood, OR" },
-            { id: "crp", lat: 27.78, lon: -97.51, name: "Corpus Christi, TX" },
-            { id: "cxx", lat: 44.51, lon: -73.16, name: "Burlington, VT" },
-            { id: "cys", lat: 41.15, lon: -104.81, name: "Cheyenne, WY" },
-            { id: "daf", lat: 32.81, lon: -96.85, name: "Dallas Love Field, TX" },
-            { id: "day", lat: 39.90, lon: -84.22, name: "Dayton, OH" },
-            { id: "dbq", lat: 42.40, lon: -90.71, name: "Dubuque, IA" },
-            { id: "den", lat: 39.86, lon: -104.67, name: "Denver, CO" },
-            { id: "dfw", lat: 32.90, lon: -97.04, name: "Dallas-Ft Worth, TX" },
-            { id: "dgx", lat: 32.28, lon: -89.98, name: "Jackson, MS" },
-            { id: "dix", lat: 40.01, lon: -74.41, name: "Mount Holly, NJ" },
-            { id: "dlh", lat: 46.84, lon: -92.21, name: "Duluth, MN" },
-            { id: "dmx", lat: 41.73, lon: -93.72, name: "Des Moines, IA" },
-            { id: "dov", lat: 39.13, lon: -75.47, name: " Dover AFB, DE" },
-            { id: "dpa", lat: 41.91, lon: -88.25, name: "West Chicago, IL" }, 
-            { id: "dtw", lat: 42.21, lon: -83.35, name: "Detroit, MI" },
-            { id: "dvn", lat: 41.61, lon: -90.58, name: "Davenport, IA" },
-            { id: "dyx", lat: 32.44, lon: -99.68, name: "Abilene, TX" },
-            { id: "eax", lat: 38.82, lon: -94.26, name: "Kansas City, MO" },
-            { id: "eyx", lat: 34.63, lon: -120.39, name: "Vandenberg AFB, CA" },
-            { id: "eez", lat: 29.18, lon: -82.22, name: "Ocala, FL" },
-            { id: "eew", lat: 34.93, lon: -120.43, name: "Santa Maria, CA" },
-            { id: "epz", lat: 31.87, lon: -106.70, name: "El Paso, TX" },
-            { id: "esx", lat: 32.74, lon: -116.92, name: "San Diego, CA" },
-            { id: "evx", lat: 30.49, lon: -85.92, name: "Eglin AFB, FL" },
-            { id: "ewr", lat: 40.69, lon: -74.17, name: "Newark, NJ" },
-            { id: "eyw", lat: 24.55, lon: -81.76, name: "Key West, FL" },
-            { id: "fcx", lat: 37.02, lon: -80.27, name: "Roanoke, VA" },
-            { id: "fdr", lat: 34.36, lon: -98.98, name: "Frederick, OK" },
-            { id: "ffc", lat: 33.36, lon: -84.57, name: "Atlanta, GA" },
-            { id: "fsx", lat: 48.57, lon: -124.21, name: "Olympic Peninsula, WA" },
-            { id: "ftg", lat: 39.79, lon: -104.55, name: "Denver/Boulder, CO" },
-            { id: "fws", lat: 32.57, lon: -97.30, name: "Dallas/Fort Worth, TX" },
-            { id: "ggw", lat: 48.21, lon: -106.62, name: "Glasgow, MT" },
-            { id: "gjx", lat: 39.06, lon: -108.53, name: "Grand Junction, CO" },
-            { id: "gld", lat: 39.37, lon: -101.70, name: "Goodland, KS" },
-            { id: "grb", lat: 44.49, lon: -88.11, name: "Green Bay, WI" },
-            { id: "grk", lat: 31.06, lon: -97.63, name: "Fort Cavazos, TX" },
-            { id: "grr", lat: 42.89, lon: -85.54, name: "Grand Rapids, MI" },
-            { id: "gsp", lat: 34.88, lon: -82.22, name: "Greenville, SC" },
-            { id: "gwa", lat: 46.28, lon: -119.60, name: "Tri-Cities, WA" },
-            { id: "gyx", lat: 43.89, lon: -70.26, name: "Portland/Gray, ME" },
-            { id: "hax", lat: 37.93, lon: -102.19, name: "Lamar, CO" },
-            { id: "hdx", lat: 33.08, lon: -106.12, name: "Holloman AFB, NM" },
-            { id: "hgx", lat: 29.47, lon: -95.08, name: "Houston, TX" },
-            { id: "hkm", lat: 43.12, lon: -76.11, name: "Syracuse, NY" },
-            { id: "hmo", lat: 44.12, lon: -103.21, name: "Rapid City, SD" },
-            { id: "hnx", lat: 36.31, lon: -119.63, name: "San Joaquin Valley, CA" },
-            { id: "hpw", lat: 35.33, lon: -120.85, name: "Morro Bay, CA" },
-            { id: "hqx", lat: 41.32, lon: -122.31, name: "Mt. Shasta, CA" },
-            { id: "hsv", lat: 34.64, lon: -86.77, name: "Huntsville, AL" },
-            { id: "htx", lat: 34.93, lon: -86.08, name: "Hytop, AL" },
-            { id: "hua", lat: 34.69, lon: -86.65, name: "Redstone Arsenal, AL" },
-            { id: "ict", lat: 37.65, lon: -97.44, name: "Wichita, KS" },
-            { id: "icw", lat: 32.83, lon: -79.97, name: "Charleston, SC" },
-            { id: "idk", lat: 40.54, lon: -80.22, name: "Pittsburgh, PA" },
-            { id: "iel", lat: 48.41, lon: -111.97, name: "Shelby, MT" },
-            { id: "ifp", lat: 35.16, lon: -114.56, name: "Bullhead City, AZ" },
-            { id: "ilg", lat: 39.67, lon: -75.60, name: "Wilmington, DE" },
-            { id: "iln", lat: 39.42, lon: -83.82, name: "Cincinnati, OH" },
-            { id: "ilx", lat: 40.15, lon: -89.33, name: "Lincoln/Central IL" },
-            { id: "ind", lat: 39.72, lon: -86.29, name: "Indianapolis, IN" },
-            { id: "inl", lat: 48.57, lon: -93.40, name: "International Falls, MN" },
-            { id: "inw", lat: 35.03, lon: -110.72, name: "Winslow, AZ" },
-            { id: "isx", lat: 41.26, lon: -111.98, name: "Ogden, UT" },
-            { id: "itc", lat: 37.77, lon: -122.22, name: "Oakland, CA" },
-            { id: "iwx", lat: 41.36, lon: -85.70, name: "Northern Indiana, IN" },
-            { id: "jaf", lat: 30.50, lon: -81.70, name: "Jacksonville, FL" },
-            { id: "jax", lat: 30.48, lon: -81.70, name: "Jacksonville, FL" },
-            { id: "jgx", lat: 32.64, lon: -83.60, name: "Robins AFB, GA" },
-            { id: "jfk", lat: 40.64, lon: -73.78, name: "New York City, NY" },
-            { id: "jln", lat: 37.15, lon: -94.50, name: "Joplin, MO" },
-            { id: "jua", lat: 18.12, lon: -66.08, name: "Puerto Rico" },
-            { id: "jwk", lat: 43.11, lon: -75.23, name: "Utica, NY" },
-            { id: "las", lat: 36.08, lon: -115.15, name: "Las Vegas, NV" },
-            { id: "lax", lat: 33.94, lon: -118.41, name: "Los Angeles, CA" },
-            { id: "lbb", lat: 33.65, lon: -101.81, name: "Lubbock, TX" },
-            { id: "lch", lat: 30.12, lon: -93.22, name: "Lake Charles, LA" },
-            { id: "lex", lat: 38.04, lon: -84.60, name: "Lexington, KY" },
-            { id: "lga", lat: 40.77, lon: -73.87, name: "LaGuardia, NY" },
-            { id: "lhk", lat: 36.57, lon: -89.53, name: "New Center, MO" },
-            { id: "lix", lat: 30.34, lon: -89.82, name: "New Orleans, LA" },
-            { id: "lnk", lat: 40.85, lon: -96.75, name: "Lincoln, NE" },
-            { id: "loe", lat: 33.15, lon: -103.15, name: "Hobbs, NM" },
-            { id: "lot", lat: 41.60, lon: -88.08, name: "Chicago/Romeoville, IL" },
-            { id: "lrx", lat: 40.74, lon: -116.80, name: "Elko, NV" },
             { id: "lsx", lat: 38.97, lon: -90.96, name: "St. Louis, MO" },
-            { id: "ltg", lat: 36.16, lon: -86.68, name: "Nashville, TN" },
-            { id: "lwx", lat: 38.98, lon: -77.48, name: "Washington DC, VA" },
-            { id: "lzk", lat: 34.84, lon: -92.26, name: "Little Rock, AR" },
-            { id: "maf", lat: 31.94, lon: -102.19, name: "Midland/Odessa, TX" },
-            { id: "max", lat: 42.08, lon: -122.90, name: "Medford, OR" },
-            { id: "mbx", lat: 48.39, lon: -100.86, name: "Minot AFB, ND" },
-            { id: "mci", lat: 39.30, lon: -94.71, name: "Kansas City, MO" },
-            { id: "mco", lat: 28.43, lon: -81.31, name: "Orlando, FL" },
-            { id: "mda", lat: 39.11, lon: -76.88, name: "Columbia, MD" },
-            { id: "mdw", lat: 41.79, lon: -87.75, name: "Chicago Midway, IL" },
             { id: "meg", lat: 35.34, lon: -89.87, name: "Memphis, TN" },
-            { id: "mia", lat: 25.79, lon: -80.29, name: "Miami, FL" },
-            { id: "mke", lat: 42.95, lon: -87.90, name: "Milwaukee, WI" },
-            { id: "mkx", lat: 42.97, lon: -88.55, name: "Milwaukee, WI" },
-            { id: "mlb", lat: 28.11, lon: -80.65, name: "Melbourne, FL" },
-            { id: "mmo", lat: 41.28, lon: -89.25, name: "Peru, IL" },
-            { id: "mob", lat: 30.68, lon: -88.24, name: "Mobile, AL" },
-            { id: "mpx", lat: 44.85, lon: -93.56, name: "Minneapolis, MN" },
-            { id: "msn", lat: 43.14, lon: -89.34, name: "Madison, WI" },
-            { id: "msp", lat: 44.88, lon: -93.22, name: "Minneapolis, MN" },
-            { id: "msx", lat: 47.04, lon: -113.99, name: "Missoula, MT" },
-            { id: "mtx", lat: 41.26, lon: -112.44, name: "Promontory Point, UT" },
-            { id: "mux", lat: 37.15, lon: -121.90, name: "San Francisco, CA" },
-            { id: "mxx", lat: 32.54, lon: -85.79, name: "Maxwell AFB, AL" },
-            { id: "myr", lat: 33.68, lon: -78.93, name: "Myrtle Beach, SC" },
-            { id: "nak", lat: 41.25, lon: -75.95, name: "Wilkes-Barre, PA" },
-            { id: "nqa", lat: 35.35, lon: -89.87, name: "Millington, TN" },
-            { id: "oax", lat: 41.32, lon: -96.37, name: "Omaha, NE" },
-            { id: "ohx", lat: 36.25, lon: -86.56, name: "Nashville, TN" },
-            { id: "okc", lat: 35.39, lon: -97.60, name: "Oklahoma City, OK" },
-            { id: "okx", lat: 40.87, lon: -72.86, name: "New York City/Upton, NY" },
-            { id: "omx", lat: 45.45, lon: -122.50, name: "Portland, OR" },
-            { id: "ord", lat: 41.98, lon: -87.90, name: "Chicago O'Hare, IL" },
-            { id: "otx", lat: 47.68, lon: -117.63, name: "Spokane, WA" },
-            { id: "paah", lat: 40.45, lon: -80.00, name: "Pittsburgh North, PA" },
-            { id: "pbi", lat: 26.68, lon: -80.10, name: "West Palm Beach, FL" },
-            { id: "pdx", lat: 45.59, lon: -122.60, name: "Portland, OR" },
-            { id: "phl", lat: 39.87, lon: -75.24, name: "Philadelphia, PA" },
-            { id: "phx", lat: 33.43, lon: -112.01, name: "Phoenix, AZ" },
-            { id: "pit", lat: 40.49, lon: -80.23, name: "Pittsburgh, PA" },
-            { id: "poe", lat: 31.14, lon: -92.98, name: "Fort Johnson, LA" },
-            { id: "pua", lat: 35.43, lon: -120.50, name: "Paso Robles, CA" },
-            { id: "puw", lat: 46.74, lon: -117.11, name: "Pullman, WA" },
-            { id: "rax", lat: 35.99, lon: -78.49, name: "Raleigh, NC" },
-            { id: "rdu", lat: 35.88, lon: -78.79, name: "Raleigh-Durham, NC" },
-            { id: "rgx", lat: 39.75, lon: -119.80, name: "Reno, NV" },
-            { id: "riw", lat: 43.06, lon: -108.48, name: "Riverton, WY" },
-            { id: "rlx", lat: 38.31, lon: -81.72, name: "Charleston, WV" },
-            { id: "rnc", lat: 34.25, lon: -118.50, name: "San Fernando Valley, CA" },
-            { id: "rtx", lat: 41.96, lon: -121.30, name: "Tulelake, CA" },
-            { id: "rwf", lat: 44.45, lon: -95.12, name: "Redwood Falls, MN" },
-            { id: "saf", lat: 35.62, lon: -106.09, name: "Santa Fe, NM" },
-            { id: "san", lat: 32.73, lon: -117.19, name: "San Diego, CA" },
-            { id: "sat", lat: 29.53, lon: -98.47, name: "San Antonio, TX" },
-            { id: "sea", lat: 47.45, lon: -122.31, name: "Seattle, WA" },
-            { id: "sfo", lat: 37.62, lon: -122.37, name: "San Francisco, CA" },
-            { id: "sgf", lat: 37.24, lon: -93.40, name: "Springfield, MO" },
-            { id: "shv", lat: 32.45, lon: -93.83, name: "Shreveport, LA" },
-            { id: "sjc", lat: 37.36, lon: -121.93, name: "San Jose, CA" },
-            { id: "sjt", lat: 31.37, lon: -100.49, name: "San Angelo, TX" },
-            { id: "slc", lat: 40.79, lon: -111.98, name: "Salt Lake City, UT" },
-            { id: "smf", lat: 38.69, lon: -121.59, name: "Sacramento, CA" },
-            { id: "snx", lat: 48.08, lon: -122.28, name: "Everett, WA" },
-            { id: "sof", lat: 42.57, lon: -121.85, name: "Klamath Falls, OR" },
-            { id: "spg", lat: 27.77, lon: -82.63, name: "St. Petersburg, FL" },
-            { id: "spi", lat: 39.84, lon: -89.67, name: "Springfield, IL" },
-            { id: "stl", lat: 38.75, lon: -90.37, name: "St. Louis, MO" },
-            { id: "sts", lat: 38.51, lon: -122.81, name: "Santa Rosa, CA" },
-            { id: "sud", lat: 40.10, lon: -121.10, name: "Chico, CA" },
-            { id: "tbw", lat: 27.70, lon: -82.40, name: "Tampa Bay, FL" },
-            { id: "tfx", lat: 47.46, lon: -111.38, name: "Great Falls, MT" },
-            { id: "tlh", lat: 30.39, lon: -84.33, name: "Tallahassee, FL" },
-            { id: "tlx", lat: 35.33, lon: -97.27, name: "Oklahoma City/Norman, OK" },
-            { id: "tpa", lat: 27.98, lon: -82.53, name: "Tampa, FL" },
-            { id: "tou", lat: 47.11, lon: -121.22, name: "Tacoma, WA" },
-            { id: "twf", lat: 42.48, lon: -114.49, name: "Twin Falls, ID" },
-            { id: "tyx", lat: 43.76, lon: -75.72, name: "Fort Drum, NY" },
-            { id: "uds", lat: 47.25, lon: -120.50, name: "Ellensburg, WA" },
-            { id: "uex", lat: 40.32, lon: -98.44, name: "Hastings, NE" },
-            { id: "vaaf", lat: 36.50, lon: -76.50, name: "Norfolk, VA" },
-            { id: "vbg", lat: 34.73, lon: -120.58, name: "Vandenberg AFB, CA" },
-            { id: "vnx", lat: 36.74, lon: -98.13, name: "Vance AFB, OK" },
-            { id: "vsk", lat: 43.10, lon: -76.22, name: "Syracuse North, NY" },
-            { id: "vax", lat: 30.78, lon: -83.19, name: "Moody AFB, GA" },
-            { id: "wst", lat: 40.12, lon: -74.15, name: "Belmar, NJ" },
-            { id: "wtc", lat: 35.41, lon: -97.74, name: "Will Rogers, OK" },
-            { id: "yux", lat: 32.66, lon: -114.61, name: "Yuma, AZ" }
+            { id: "okx", lat: 40.87, lon: -72.86, name: "New York City/Upton, NY" }
         ];
 
         window.onload = function() {
             map = L.map('map', {
-                center: [centerLat, centerLng],
-                zoom: 5, 
-                minZoom: 3,
-                maxZoom: 18, 
-                zoomControl: false
+                center: [38.9742, -90.9664],
+                zoom: 5, minZoom: 3, maxZoom: 18, zoomControl: false
             });
 
             map.createPane('tilePane').style.zIndex = 200;
@@ -863,58 +625,28 @@
             map.getPane('usMosaicPane').className += ' radar-broadcast-pane mrms-color-matrix';
             map.createPane('singleSitePane').style.zIndex = 400;
             map.getPane('singleSitePane').className += ' radar-broadcast-pane';
-            
             map.createPane('alertsPane').style.zIndex = 700;
             map.createPane('labelsPane').style.zIndex = 800;
 
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
-                pane: 'tilePane',
-                opacity: 0.18,
-                maxNativeZoom: 12,
-                maxZoom: 18
-            }).addTo(map);
-
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
-                pane: 'labelsPane',
-                pointerEvents: 'none',
-                opacity: 0.85,
-                maxNativeZoom: 12,
-                maxZoom: 18
-            }).addTo(map);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', { pane: 'tilePane', opacity: 0.18 }).addTo(map);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', { pane: 'labelsPane', pointerEvents: 'none', opacity: 0.85 }).addTo(map);
 
             polygonAlertGroup = L.layerGroup().addTo(map);
 
             assembleCompleteNEXRADMenu();
             initRainViewerRadar();
             loadWeatherAlertPipeline();
-
-            map.on('zoomend move moveend', recalibratePerimeterGradientMask);
-
-            document.addEventListener("visibilitychange", function() {
-                if (!document.hidden) loadWeatherAlertPipeline();
-            });
         };
 
-        function toggleTopLeftControlPanel() {
-            var panel = document.getElementById('hud-panel');
-            panel.classList.toggle('collapsed');
-        }
-
-        function toggleRightAlertsSidebarPanel() {
-            var panel = document.getElementById('right-alerts-sidebar');
-            panel.classList.toggle('collapsed');
-        }
-
+        function toggleTopLeftControlPanel() { document.getElementById('hud-panel').classList.toggle('collapsed'); }
+        function toggleRightAlertsSidebarPanel() { document.getElementById('right-alerts-sidebar').classList.toggle('collapsed'); }
+        function closeNwsTextStatementModal() { document.getElementById('raw-text-modal-backdrop').style.display = 'none'; }
         function launchNwsTextStatementModal(alertId) {
             var cachedRecord = activeNwsTextMapCache[alertId];
             if (!cachedRecord) return;
             document.getElementById('modal-title-element').innerText = cachedRecord.title.toUpperCase();
             document.getElementById('modal-body-element').innerText = cachedRecord.text;
             document.getElementById('raw-text-modal-backdrop').style.display = 'flex';
-        }
-
-        function closeNwsTextStatementModal() {
-            document.getElementById('raw-text-modal-backdrop').style.display = 'none';
         }
 
         function loadWeatherAlertPipeline() {
@@ -926,293 +658,129 @@
                             const ev = (f.properties.event || "").toUpperCase();
                             return ev.includes("WARNING");
                         });
-
-                        instantAlertCount = masterAlertFeatures.length;
-                        document.getElementById('badge-counter-element').innerText = instantAlertCount;
-                        document.getElementById('sidebar-counter-string').innerText = instantAlertCount;
-                        
+                        document.getElementById('badge-counter-element').innerText = masterAlertFeatures.length;
+                        document.getElementById('sidebar-counter-string').innerText = masterAlertFeatures.length;
                         rebuildSidebarAlertFeedDOM();
                         plotWarningPolygonsOnMap();
                     }
-                })
-                .catch(err => console.error(err));
+                }).catch(err => console.error(err));
         }
 
         function rebuildSidebarAlertFeedDOM() {
             let container = document.getElementById('sidebar-feed-container');
-            if(!container) return;
-            container.innerHTML = "";
-
+            if(!container) return; container.innerHTML = "";
             if(masterAlertFeatures.length === 0) {
-                container.innerHTML = `<div style="font-size:11px; color:#64748b; padding:20px 0; text-align:center;">No active weather warnings detected.</div>`;
+                container.innerHTML = `<div style="font-size:11px; color:#64748b; padding:20px 0; text-align:center;">No alerts.</div>`;
                 return;
             }
-
             masterAlertFeatures.forEach(feature => {
                 const prop = feature.properties || {};
-                const id = prop.id || Math.random().toString();
-                const eventName = prop.event || "Advisory";
-                const eventUpper = eventName.toUpperCase();
-                const sectors = (prop.areaDesc || "Regional Track").split(';')[0];
-                const summary = prop.description || "Product details processing...";
-
-                let derivedHexValue = "#a855f7"; 
-                if(eventUpper.includes("TORNADO")) { derivedHexValue = "#FF0000"; }
-                else if(eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM")) { derivedHexValue = "#FFAA00"; }
-                else if(eventUpper.includes("FLOOD")) { derivedHexValue = "#00FF00"; }
-
-                let timestampLabel = "Active Track";
-                if(prop.sent) {
-                    let d = new Date(prop.sent);
-                    timestampLabel = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + " | " + d.toLocaleDateString();
-                }
-
                 let cardNode = document.createElement('div');
                 cardNode.className = "sidebar-feed-card";
-                cardNode.onclick = () => { launchNwsTextStatementModal(id); };
-                cardNode.innerHTML = `
-                    <div class="card-badge" style="color: ${derivedHexValue} !important;">${eventName}</div>
-                    <div class="card-sectors">Sector: ${sectors}</div>
-                    <div class="card-time">${timestampLabel}</div>
-                    <div class="card-narrative">${summary}</div>
-                `;
+                cardNode.onclick = () => { launchNwsTextStatementModal(prop.id || Math.random()); };
+                cardNode.innerHTML = `<div class="card-badge">${prop.event}</div><div class="card-sectors">${prop.areaDesc.split(';')[0]}</div>`;
                 container.appendChild(cardNode);
             });
         }
 
-        function switchRadarMode(mode) {
-            currentRadarMode = mode;
-            document.getElementById('radar-us-btn').classList.remove('active');
-            document.getElementById('radar-site-btn').classList.remove('active');
-            document.getElementById('station-toggle-box').classList.remove('visible');
-
-            if (animationIntervalId) {
-                clearInterval(animationIntervalId);
-                animationIntervalId = null;
-            }
-
-            if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); singleSiteRadarLayer = null; }
-            if(singleSiteBorderCircle) { map.removeLayer(singleSiteBorderCircle); singleSiteBorderCircle = null; }
-
-            if(mode === 'national') {
-                document.getElementById('radar-us-btn').classList.add('active');
-                map.getPane('usMosaicPane').style.display = 'block';
-                map.getPane('singleSitePane').style.display = 'none';
-                map.getPane('singleSitePane').style.maskImage = 'none';
-                map.getPane('singleSitePane').style.webkitMaskImage = 'none';
-                
-                if(radarLayers.length > 0) {
-                    radarLayers[currentRadarIndex].setOpacity(0.85);
-                    animationIntervalId = setInterval(animateRadarFrames, 1200);
-                }
-            } else {
-                document.getElementById('radar-site-btn').classList.add('active');
-                document.getElementById('station-toggle-box').classList.add('visible');
-                map.getPane('usMosaicPane').style.display = 'none';
-                map.getPane('singleSitePane').style.display = 'block';
-                radarLayers.forEach(l => l.setOpacity(0.0));
-                
-                loadSingleSiteRadar();
-            }
-        }
-
-        function loadSingleSiteRadar() {
-            if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); }
-            if(singleSiteBorderCircle) { map.removeLayer(singleSiteBorderCircle); }
-
-            var dropdown = document.getElementById('radar-station-dropdown');
-            var selectedOption = dropdown.options[dropdown.selectedIndex];
-            if (!selectedOption) return;
-
-            var lat = parseFloat(selectedOption.getAttribute('data-lat'));
-            var lon = parseFloat(selectedOption.getAttribute('data-lon'));
-
-            singleSiteBorderCircle = L.circle([lat, lon], {
-                radius: 250000, 
-                color: '#000000', 
-                weight: 2.0,
-                fillColor: 'transparent',
-                pane: 'labelsPane',
-                pointerEvents: 'none'
-            }).addTo(map);
-
-            var targetTilePath = currentActiveGlobalPath ? currentActiveGlobalPath : (radarFramesPaths.length > 0 ? radarFramesPaths[radarFramesPaths.length - 1] : "/v2/radar/nowcast");
-            if (!targetTilePath.startsWith('/')) {
-                targetTilePath = '/' + targetTilePath;
-            }
-
-            var timeBracketToken = Math.floor(Date.now() / 600000);
-            singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/1/1_1.png?cb=' + timeBracketToken, {
-                opacity: 0.85,
-                pane: 'singleSitePane',
-                maxNativeZoom: 12, 
-                maxZoom: 18
-            }).addTo(map);
-
-            setTimeout(recalibratePerimeterGradientMask, 80);
-        }
-
-        function executeStationChangeToggle() {
-            if (currentRadarMode === 'single') loadSingleSiteRadar();
-        }
-
-        function recalibratePerimeterGradientMask() {
-            if (currentRadarMode !== 'single' || !singleSiteBorderCircle || !map) return;
-            var centerPointCoordinates = map.latLngToContainerPoint(singleSiteBorderCircle.getLatLng());
-            var initialLatLng = singleSiteBorderCircle.getLatLng();
-            var offsetLongitudeBound = initialLatLng.lng + (250000 / (111320 * Math.cos(initialLatLng.lat * Math.PI / 180)));
-            var boundaryLatLng = L.latLng(initialLatLng.lat, offsetLongitudeBound);
-            var outerEdgeCoordinates = map.latLngToContainerPoint(boundaryLatLng);
-            var liveRadiusPixels = Math.abs(outerEdgeCoordinates.x - centerPointCoordinates.x);
-
-            var paneElement = map.getPane('singleSitePane');
-            if (paneElement) {
-                var gradientMaskString = 'radial-gradient(circle ' + liveRadiusPixels + 'px at ' + centerPointCoordinates.x + 'px ' + centerPointCoordinates.y + 'px, rgba(0,0,0,1) 100%, rgba(0,0,0,0) 100%)';
-                paneElement.style.maskImage = gradientMaskString;
-                paneElement.style.webkitMaskImage = gradientMaskString;
-            }
-        }
-
         function plotWarningPolygonsOnMap() {
             polygonAlertGroup.clearLayers();
-
             masterAlertFeatures.forEach(feature => {
                 if (!feature.geometry || !feature.geometry.coordinates) return;
                 const properties = feature.properties || {};
                 const eventName = properties.event || "Weather Event";
                 const eventUpper = eventName.toUpperCase();
-                const alertId = properties.id || Math.random().toString(36).substr(2, 9);
+                const alertId = properties.id || Math.random().toString();
 
-                if (eventUpper.includes("WATCH") || eventUpper.includes("ADVISORY")) return;
+                let strokeColor = "#a855f7"; let fillAlpha = 0.20; let popupThemeClass = "theme-severe";
+                let isTornado = eventUpper.includes("TORNADO");
+                let isSevereThunder = eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM");
+                let isFlashFlood = eventUpper.includes("FLASH") && eventUpper.includes("FLOOD");
+                let isStandardFlood = eventUpper.includes("FLOOD") && !eventUpper.includes("FLASH");
 
-                let strokeColor = "#a855f7"; let strokeWeight = 2.0; let fillAlpha = 0.15; 
-                let popupThemeClass = "theme-severe";
+                if (isTornado) { strokeColor = "#FF0000"; fillAlpha = 0.25; popupThemeClass = "theme-tornado"; }
+                else if (isSevereThunder) { strokeColor = "#FFAA00"; fillAlpha = 0.20; popupThemeClass = "theme-severe"; }
+                else if (isFlashFlood) { strokeColor = "#00FF00"; fillAlpha = 0.22; popupThemeClass = "theme-flashflood"; }
+                else if (isStandardFlood) { strokeColor = "#008000"; fillAlpha = 0.22; popupThemeClass = "theme-flood"; }
 
-                let isFloodWarning = eventUpper.includes("FLOOD") && !eventUpper.includes("FLASH");
-                let isFlashFloodWarning = eventUpper.includes("FLASH FLOOD");
-                let isTornadoWarning = eventUpper.includes("TORNADO");
-
-                if (isTornadoWarning) {
-                    strokeColor = "#FF0000"; strokeWeight = 3.5; fillAlpha = 0.25;
-                    popupThemeClass = "theme-tornado";
-                } else if (eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM")) {
-                    strokeColor = "#FFAA00"; strokeWeight = 2.5; fillAlpha = 0.15;
-                    popupThemeClass = "theme-severe";
-                } else if (isFloodWarning || isFlashFloodWarning) {
-                    strokeColor = "#00FF00"; strokeWeight = 2.5; fillAlpha = 0.15;
-                    popupThemeClass = "theme-severe";
-                }
-
-                const parsedSectors = (properties.areaDesc || "Regional Sector").split(';')[0];
+                const parsedSectors = properties.areaDesc ? properties.areaDesc.split(';')[0] : "Regional Sector";
                 const coreAdvisoryNarrative = properties.description || "";
 
                 var textDumpToValidate = (coreAdvisoryNarrative + " " + (properties.headline || "")).toUpperCase();
                 var isParticularlyDangerousSituation = textDumpToValidate.includes("PARTICULARLY DANGEROUS SITUATION") || textDumpToValidate.includes("PDS ");
                 
                 let pdsCalloutMarkupBlock = "";
-                if (isTornadoWarning && isParticularlyDangerousSituation) {
+                if (isTornado && isParticularlyDangerousSituation) {
                     pdsCalloutMarkupBlock = `<div class="pds-danger-alert-box">THIS IS A PARTICULARLY DANGEROUS SITUATION... TAKE COVER NOW!</div>`;
                 }
 
                 var extractedHazardText = "Radar Indicated";
                 var hazardMatchPattern = /HAZARD\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
-                if (hazardMatchPattern && hazardMatchPattern[1]) {
-                    extractedHazardText = hazardMatchPattern[1].split('$$')[0].split('&&')[0].trim();
-                }
+                if (hazardMatchPattern && hazardMatchPattern[1]) extractedHazardText = hazardMatchPattern[1].split('$$')[0].split('&&')[0].trim();
+
+                var extractedSourceText = "Radar Indicated";
+                var sourceMatchPattern = /SOURCE\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
+                if (sourceMatchPattern && sourceMatchPattern[1]) extractedSourceText = sourceMatchPattern[1].split('$$')[0].split('&&')[0].trim();
 
                 var extractedWindText = "60 MPH";
                 var windMatchPattern = /WIND\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
-                if (windMatchPattern && windMatchPattern[1]) {
-                    extractedWindText = windMatchPattern[1].split('$$')[0].split('&&')[0].trim();
-                }
+                if (windMatchPattern && windMatchPattern[1]) extractedWindText = windMatchPattern[1].split('$$')[0].split('&&')[0].trim();
 
-                var extractedHailText = "<0.75\" - Penny";
+                var extractedHailText = "Penny Size";
                 var hailMatchPattern = /HAIL\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
-                if (hailMatchPattern && hailMatchPattern[1]) {
-                    extractedHailText = hailMatchPattern[1].split('$$')[0].split('&&')[0].trim();
-                } else if (properties.maxHailSize) {
-                    extractedHailText = properties.maxHailSize;
-                }
+                if (hailMatchPattern && hailMatchPattern[1]) extractedHailText = hailMatchPattern[1].split('$$')[0].split('&&')[0].trim();
 
-                var riskThreat = "Considerable";
+                var riskThreat = "";
                 var threatMatchPattern = /DAMAGE THREAT\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
-                if (threatMatchPattern && threatMatchPattern[1]) {
-                    riskThreat = threatMatchPattern[1].split('$$')[0].split('&&')[0].trim();
-                } else if (isTornadoWarning) {
-                    riskThreat = isParticularlyDangerousSituation ? "Catastrophic" : "Extreme";
-                }
+                if (threatMatchPattern && threatMatchPattern[1]) riskThreat = threatMatchPattern[1].split('$$')[0].split('&&')[0].trim();
 
-                var timeRemainingLabel = "Active Alert";
+                var timeRemainingLabel = "ACTIVE ALERT";
                 if (properties.ends) {
                     var endTimestamp = new Date(properties.ends).getTime();
                     var durationMinutesDiff = Math.ceil((endTimestamp - Date.now()) / (1000 * 60));
                     if (durationMinutesDiff > 0) timeRemainingLabel = `EXPIRES IN ${durationMinutesDiff} MIN`;
                 }
 
-                var dynamicWmoToken = properties.wmoIdentifier ? properties.wmoIdentifier.trim() : "NWS PRODUCT REPORT";
-                const compiledRawTextReport = `${dynamicWmoToken}\n\n${coreAdvisoryNarrative.trim()}`;
-
-                activeNwsTextMapCache[alertId] = {
-                    title: eventName,
-                    text: compiledRawTextReport
-                };
+                activeNwsTextMapCache[alertId] = { title: eventName, text: coreAdvisoryNarrative.trim() };
 
                 let interactivePillGridTemplate = "";
-                if (isTornadoWarning) {
+                if (isTornado) {
                     interactivePillGridTemplate = `
-                        <div class="popup-glass-block">
-                            <span class="title">Tornado</span>
-                            <span class="val">${extractedHazardText}</span>
-                        </div>
-                        <div class="popup-glass-block">
-                            <span class="title">Hail</span>
-                            <span class="val">${extractedHailText}</span>
-                        </div>
-                        ${pdsCalloutMarkupBlock}
-                    `;
-                } else {
+                        <div class="popup-glass-block"><span class="title">Tornado</span><span class="val">${extractedHazardText}</span></div>
+                        <div class="popup-glass-block"><span class="title">Hail</span><span class="val">${extractedHailText}</span></div>
+                        ${pdsCalloutMarkupBlock}`;
+                } else if (isSevereThunder) {
                     interactivePillGridTemplate = `
-                        <div class="popup-glass-block">
-                            <span class="title">Tornado</span>
-                            <span class="val">Possible</span>
-                        </div>
+                        <div class="popup-glass-block"><span class="title">Tornado</span><span class="val">Possible</span></div>
                         <div class="popup-grid-split">
-                            <div class="popup-glass-block">
-                                <span class="title">Wind</span>
-                                <span class="val">${extractedWindText}</span>
-                            </div>
-                            <div class="popup-glass-block">
-                                <span class="title">Hail</span>
-                                <span class="val">${extractedHailText}</span>
-                            </div>
+                            <div class="popup-glass-block"><span class="title">Wind</span><span class="val">${extractedWindText}</span></div>
+                            <div class="popup-glass-block"><span class="title">Hail</span><span class="val">${extractedHailText}</span></div>
                         </div>
-                        <div class="popup-glass-block">
-                            <span class="title">Damage Threat</span>
-                            <span class="val">${riskThreat}</span>
-                        </div>
-                    `;
+                        <div class="popup-glass-block"><span class="title">Damage Threat</span><span class="val">${riskThreat || 'Considerable'}</span></div>`;
+                } else if (isFlashFlood) {
+                    let threatBlockMarkup = "";
+                    if (riskThreat) {
+                        threatBlockMarkup = `<div class="popup-glass-block"><span class="title">Damage Threat</span><span class="val">${riskThreat}</span></div>`;
+                    }
+                    interactivePillGridTemplate = `
+                        <div class="popup-glass-block"><span class="title">Source</span><span class="val">${extractedSourceText}</span></div>
+                        ${threatBlockMarkup}`;
+                } else if (isStandardFlood) {
+                    interactivePillGridTemplate = "";
                 }
 
                 L.geoJSON(feature, {
                     pane: 'alertsPane', 
-                    style: { color: strokeColor, weight: strokeWeight, fillColor: strokeColor, fillOpacity: fillAlpha },
+                    style: { stroke: false, fillColor: strokeColor, fillOpacity: fillAlpha },
                     onEachFeature: function(f, layer) {
                         layer.bindPopup(`
                             <div class="nws-screenshot-popup-container ${popupThemeClass}">
                                 <div class="popup-header-title">${eventName}</div>
                                 <div class="popup-header-expiry">${timeRemainingLabel}</div>
                                 <div class="popup-timeline-track"><div class="popup-timeline-fill"></div></div>
-                                
-                                <div class="popup-row-counties">
-                                    <span class="label">Counties</span>
-                                    <span class="names" title="${parsedSectors}">${parsedSectors}</span>
-                                </div>
-
+                                <div class="popup-row-counties"><span class="label">Counties</span><span class="names" title="${parsedSectors}">${parsedSectors}</span></div>
                                 ${interactivePillGridTemplate}
-
-                                <div class="popup-action-btn-row">
-                                    <button class="popup-txt-trigger" onclick="launchNwsTextStatementModal('${alertId}')">View Text</button>
-                                </div>
+                                <div class="popup-action-btn-row"><button class="popup-txt-trigger" onclick="launchNwsTextStatementModal('${alertId}')">View Text</button></div>
                             </div>
                         `, { maxWidth: 280, closeButton: false });
                     }
@@ -1221,26 +789,23 @@
         }
 
         function initRainViewerRadar() {
-            fetch("https://api.rainviewer.com/public/weather-maps.json?t=" + Date.now())
+            fetch("https://api.rainviewer.com/public/weather-maps.json")
                 .then(res => res.json())
                 .then(metadata => {
                     radarFramesPaths = metadata.radar.past.slice(-5).map(f => f.path);
                     currentActiveGlobalPath = radarFramesPaths[radarFramesPaths.length - 1];
-
                     var timeBracketToken = Math.floor(Date.now() / 600000);
+                    
                     radarFramesPaths.forEach((path) => {
                         const radarLayer = L.tileLayer('https://tilecache.rainviewer.com' + path + '/256/{z}/{x}/{y}/2/0_0.png?cb=' + timeBracketToken, {
-                            opacity: 0.0, 
-                            maxNativeZoom: 7,   
-                            maxZoom: 18,        
-                            pane: 'usMosaicPane' 
+                            opacity: 0.0, maxNativeZoom: 7, maxZoom: 18, pane: 'usMosaicPane' 
                         });
                         radarLayer.addTo(map);
                         radarLayers.push(radarLayer);
                     });
 
-                    if(radarLayers.length > 0 && currentRadarMode === 'national') {
-                        radarLayers[currentRadarIndex].setOpacity(0.85); 
+                    if(radarLayers.length > 0) {
+                        radarLayers[radarLayers.length - 1].setOpacity(0.85); 
                         currentRadarIndex = radarLayers.length - 1;
                         animationIntervalId = setInterval(animateRadarFrames, 1200); 
                     }
@@ -1254,37 +819,82 @@
             radarLayers[currentRadarIndex].setOpacity(0.85);
         }
 
+        function switchRadarMode(mode) {
+            currentRadarMode = mode;
+            document.getElementById('radar-us-btn').classList.remove('active');
+            document.getElementById('radar-site-btn').classList.remove('active');
+            document.getElementById('station-toggle-box').classList.remove('visible');
+            if (animationIntervalId) { clearInterval(animationIntervalId); animationIntervalId = null; }
+            if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); singleSiteRadarLayer = null; }
+            if(singleSiteBorderCircle) { map.removeLayer(singleSiteBorderCircle); singleSiteBorderCircle = null; }
+
+            if(mode === 'national') {
+                document.getElementById('radar-us-btn').classList.add('active');
+                map.getPane('usMosaicPane').style.display = 'block';
+                map.getPane('singleSitePane').style.display = 'none';
+                if(radarLayers.length > 0) {
+                    radarLayers[currentRadarIndex].setOpacity(0.85);
+                    animationIntervalId = setInterval(animateRadarFrames, 1200);
+                }
+            } else {
+                document.getElementById('radar-site-btn').classList.add('active');
+                document.getElementById('station-toggle-box').classList.add('visible');
+                map.getPane('usMosaicPane').style.display = 'none';
+                map.getPane('singleSitePane').style.display = 'block';
+                radarLayers.forEach(l => l.setOpacity(0.0));
+                loadSingleSiteRadar();
+            }
+        }
+
+        function loadSingleSiteRadar() {
+            var dropdown = document.getElementById('radar-station-dropdown');
+            var selectedOption = dropdown.options[dropdown.selectedIndex];
+            if (!selectedOption) return;
+            var lat = parseFloat(selectedOption.getAttribute('data-lat'));
+            var lon = parseFloat(selectedOption.getAttribute('data-lon'));
+
+            singleSiteBorderCircle = L.circle([lat, lon], { radius: 250000, color: '#000000', weight: 2.0, fillColor: 'transparent', pane: 'labelsPane' }).addTo(map);
+            var targetTilePath = currentActiveGlobalPath ? currentActiveGlobalPath : "/v2/radar/nowcast";
+            var timeBracketToken = Math.floor(Date.now() / 600000);
+
+            singleSiteRadarLayer = L.tileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/1/1_1.png?cb=' + timeBracketToken, {
+                opacity: 0.85, pane: 'singleSitePane', maxNativeZoom: 12, maxZoom: 18
+            }).addTo(map);
+            recalibratePerimeterGradientMask();
+        }
+
         function assembleCompleteNEXRADMenu() {
             const dropdown = document.getElementById('radar-station-dropdown');
-            if (!dropdown) return;
-            dropdown.innerHTML = ""; 
+            if (!dropdown) return; dropdown.innerHTML = ""; 
             fullUSRadarDictionary.sort((a, b) => a.name.localeCompare(b.name));
             fullUSRadarDictionary.forEach(station => {
                 let node = document.createElement('option');
-                node.value = station.id;
-                node.setAttribute('data-lat', station.lat);
-                node.setAttribute('data-lon', station.lon);
-                node.text = `${station.name} (K${station.id.toUpperCase()})`;
-                dropdown.appendChild(node);
+                node.value = station.id; node.setAttribute('data-lat', station.lat); node.setAttribute('data-lon', station.lon);
+                node.text = `${station.name} (K${station.id.toUpperCase()})`; dropdown.appendChild(node);
             });
             dropdown.value = "lsx"; 
         }
 
-        function executeStationChangeToggle() {
-            if (currentRadarMode === 'single') loadSingleSiteRadar();
+        function recalibratePerimeterGradientMask() {
+            if (currentRadarMode !== 'single' || !singleSiteBorderCircle) return;
+            var centerPointCoordinates = map.latLngToContainerPoint(singleSiteBorderCircle.getLatLng());
+            var initialLatLng = singleSiteBorderCircle.getLatLng();
+            var offsetLongitudeBound = initialLatLng.lng + (250000 / (111320 * Math.cos(initialLatLng.lat * Math.PI / 180)));
+            var liveRadiusPixels = Math.abs(map.latLngToContainerPoint(L.latLng(initialLatLng.lat, offsetLongitudeBound)).x - centerPointCoordinates.x);
+            var paneElement = map.getPane('singleSitePane');
+            if (paneElement) {
+                var gradientMaskString = 'radial-gradient(circle ' + liveRadiusPixels + 'px at ' + centerPointCoordinates.x + 'px ' + centerPointCoordinates.y + 'px, rgba(0,0,0,1) 100%, rgba(0,0,0,0) 100%)';
+                paneElement.style.maskImage = gradientMaskString; paneElement.style.webkitMaskImage = gradientMaskString;
+            }
         }
 
+        function executeStationChangeToggle() { if (currentRadarMode === 'single') loadSingleSiteRadar(); }
+        function togglePlayback() { playbackActive = !playbackActive; document.getElementById('play-btn').innerText = playbackActive ? "PAUSE" : "RESUME"; }
         function executeLocalTargetReset() {
             var locationInput = document.getElementById('city-search-input').value.trim();
             if(locationInput === "") return;
-
             fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(locationInput), { headers: { 'User-Agent': 'StormStream/1.0' } })
-                .then(res => res.json())
-                .then(resData => {
-                    if(resData && resData.length > 0) {
-                        map.setView([parseFloat(resData[0].lat), parseFloat(resData[0].lon)], 6);
-                    }
-                }).catch(() => {});
+                .then(res => res.json()).then(resData => { if(resData.length > 0) map.setView([parseFloat(resData[0].lat), parseFloat(resData[0].lon)], 6); });
         }
     </script>
 </body>
