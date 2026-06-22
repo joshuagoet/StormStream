@@ -221,6 +221,36 @@
         #play-btn { background: #22c55e; border: none; color: white; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; }
         #time-display { font-size: 11px; font-family: monospace; color: #22c55e; font-weight: bold; }
 
+        #dbz-legend {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw; 
+            z-index: 99999;
+            background: rgba(10, 11, 15, 0.96);
+            border-bottom: 2px solid #2a2c35;
+            padding: 6px 0 4px 0; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .gradient-bar {
+            width: 100vw; 
+            height: 14px; 
+            background: linear-gradient(to right,
+                #87ceeb 0%,   #0055ff 15%,  
+                #a3ffa3 16%,  #008000 35%,  
+                #ffff33 36%,  #ff8c00 55%,  
+                #ff4d4d 56%,  #8b0000 70%,  
+                #ff66cc 71%,  #ff00aa 80%,  
+                #000000 81%,  #1a1b21 87%,  
+                #404040 88%,  #737373 92%,  
+                #b3b3b3 93%,  #e6e6e6 96%,  
+                #ffffff 97%,  #ffffff 100%  
+            );
+        }
+
         #right-alerts-sidebar {
             position: fixed;
             top: 105px;
@@ -353,7 +383,6 @@
             overflow: hidden;
         }
 
-        /* POP-UP STRUCTURE ENHANCEMENTS MAPPED ONTO SCREENSHOT 2026-06-10 205753_2.png */
         .nws-screenshot-popup-container {
             width: 250px;
             padding: 12px;
@@ -369,14 +398,6 @@
         .nws-screenshot-popup-container.theme-tornado {
             background: linear-gradient(135deg, #b90202 0%, #6e0101 100%);
             border: 1px solid #d40404;
-        }
-        .nws-screenshot-popup-container.theme-flashflood {
-            background: linear-gradient(135deg, #10b981 0%, #065f46 100%);
-            border: 1px solid #10b981;
-        }
-        .nws-screenshot-popup-container.theme-flood {
-            background: linear-gradient(135deg, #065f46 0%, #022c22 100%);
-            border: 1px solid #047857;
         }
         
         .popup-header-title {
@@ -826,52 +847,6 @@
             { id: "yux", lat: 32.66, lon: -114.61, name: "Yuma, AZ" }
         ];
 
-        window.onload = function() {
-            map = L.map('map', {
-                center: [centerLat, centerLng],
-                zoom: 5, 
-                minZoom: 3,
-                maxZoom: 18, 
-                zoomControl: false
-            });
-
-            map.createPane('tilePane').style.zIndex = 200;
-            map.createPane('usMosaicPane').style.zIndex = 390;
-            map.getPane('usMosaicPane').className += ' radar-broadcast-pane mrms-color-matrix';
-            map.createPane('singleSitePane').style.zIndex = 400;
-            map.getPane('singleSitePane').className += ' radar-broadcast-pane';
-            
-            map.createPane('alertsPane').style.zIndex = 700;
-            map.createPane('labelsPane').style.zIndex = 800;
-
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
-                pane: 'tilePane',
-                opacity: 0.18,
-                maxNativeZoom: 12,
-                maxZoom: 18
-            }).addTo(map);
-
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
-                pane: 'labelsPane',
-                pointerEvents: 'none',
-                opacity: 0.85,
-                maxNativeZoom: 12,
-                maxZoom: 18
-            }).addTo(map);
-
-            polygonAlertGroup = L.layerGroup().addTo(map);
-
-            assembleCompleteNEXRADMenu();
-            initRainViewerRadar();
-            loadWeatherAlertPipeline();
-
-            map.on('zoomend move moveend', recalibratePerimeterGradientMask);
-
-            document.addEventListener("visibilitychange", function() {
-                if (!document.hidden) loadWeatherAlertPipeline();
-            });
-        };
-
         function toggleTopLeftControlPanel() {
             var panel = document.getElementById('hud-panel');
             panel.classList.toggle('collapsed');
@@ -936,8 +911,7 @@
                 let derivedHexValue = "#a855f7"; 
                 if(eventUpper.includes("TORNADO")) { derivedHexValue = "#FF0000"; }
                 else if(eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM")) { derivedHexValue = "#FFAA00"; }
-                else if(eventUpper.includes("FLASH") && eventUpper.includes("FLOOD")) { derivedHexValue = "#00FF00"; }
-                else if(eventUpper.includes("FLOOD")) { derivedHexValue = "#008000"; }
+                else if(eventUpper.includes("FLOOD")) { derivedHexValue = "#00FF00"; }
 
                 let timestampLabel = "Active Track";
                 if(prop.sent) {
@@ -987,7 +961,7 @@
                 document.getElementById('radar-site-btn').classList.add('active');
                 document.getElementById('station-toggle-box').classList.add('visible');
                 map.getPane('usMosaicPane').style.display = 'none';
-                map.getPane('singleSitePane').style.block;
+                map.getPane('singleSitePane').style.display = 'block';
                 radarLayers.forEach(l => l.setOpacity(0.0));
                 
                 loadSingleSiteRadar();
@@ -1063,26 +1037,18 @@
 
                 if (eventUpper.includes("WATCH") || eventUpper.includes("ADVISORY")) return;
 
-                let strokeColor = "#a855f7"; let fillAlpha = 0.20; 
+                let strokeColor = "#a855f7"; let strokeWeight = 2.0; let fillAlpha = 0.15; 
                 let popupThemeClass = "theme-severe";
 
-                let isTornadoWarning = eventUpper.includes("TORNADO");
-                let isSevereThunderstormWarning = eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM");
-                let isFlashFloodWarning = eventUpper.includes("FLASH") && eventUpper.includes("FLOOD");
-                let isStandardFloodWarning = eventUpper.includes("FLOOD") && !eventUpper.includes("FLASH");
-
                 if (isTornadoWarning) {
-                    strokeColor = "#FF0000"; fillAlpha = 0.25;
+                    strokeColor = "#FF0000"; strokeWeight = 3.5; fillAlpha = 0.25;
                     popupThemeClass = "theme-tornado";
-                } else if (isSevereThunderstormWarning) {
-                    strokeColor = "#FFAA00"; fillAlpha = 0.20;
-                    popupThemeClass = "theme-severe"; 
-                } else if (isFlashFloodWarning) {
-                    strokeColor = "#00FF00"; fillAlpha = 0.22; 
-                    popupThemeClass = "theme-flashflood";
-                } else if (isStandardFloodWarning) {
-                    strokeColor = "#008000"; fillAlpha = 0.22; 
-                    popupThemeClass = "theme-flood";
+                } else if (eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM")) {
+                    strokeColor = "#FFAA00"; strokeWeight = 2.5; fillAlpha = 0.15;
+                    popupThemeClass = "theme-severe";
+                } else if (isFloodWarning || isFlashFloodWarning) {
+                    strokeColor = "#00FF00"; strokeWeight = 2.5; fillAlpha = 0.15;
+                    popupThemeClass = "theme-severe";
                 }
 
                 const parsedSectors = (properties.areaDesc || "Regional Sector").split(';')[0];
@@ -1096,17 +1062,10 @@
                     pdsCalloutMarkupBlock = `<div class="pds-danger-alert-box">THIS IS A PARTICULARLY DANGEROUS SITUATION... TAKE COVER NOW!</div>`;
                 }
 
-                // DYNAMIC TEXT ANALYSIS REGEX PATTERNS
                 var extractedHazardText = "Radar Indicated";
                 var hazardMatchPattern = /HAZARD\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
                 if (hazardMatchPattern && hazardMatchPattern[1]) {
                     extractedHazardText = hazardMatchPattern[1].split('$$')[0].split('&&')[0].trim();
-                }
-
-                var extractedSourceText = "Radar Indicated";
-                var sourceMatchPattern = /SOURCE\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
-                if (sourceMatchPattern && sourceMatchPattern[1]) {
-                    extractedSourceText = sourceMatchPattern[1].split('$$')[0].split('&&')[0].trim();
                 }
 
                 var extractedWindText = "60 MPH";
@@ -1123,11 +1082,12 @@
                     extractedHailText = properties.maxHailSize;
                 }
 
-                // DYNAMIC THREAT PROFILE SWEEPS
-                var riskThreat = "";
+                var riskThreat = "Considerable";
                 var threatMatchPattern = /DAMAGE THREAT\.\.\.(.+)/i.exec(coreAdvisoryNarrative);
                 if (threatMatchPattern && threatMatchPattern[1]) {
                     riskThreat = threatMatchPattern[1].split('$$')[0].split('&&')[0].trim();
+                } else if (isTornadoWarning) {
+                    riskThreat = isParticularlyDangerousSituation ? "Catastrophic" : "Extreme";
                 }
 
                 var timeRemainingLabel = "Active Alert";
@@ -1145,7 +1105,6 @@
                     text: compiledRawTextReport
                 };
 
-                // MODULAR GRID BUILDER IN ACCORDANCE WITH RE-ENGINEERED CONDITIONAL SPECIFICATIONS
                 let interactivePillGridTemplate = "";
                 if (isTornadoWarning) {
                     interactivePillGridTemplate = `
@@ -1159,7 +1118,7 @@
                         </div>
                         ${pdsCalloutMarkupBlock}
                     `;
-                } else if (isSevereThunderstormWarning) {
+                } else {
                     interactivePillGridTemplate = `
                         <div class="popup-glass-block">
                             <span class="title">Tornado</span>
@@ -1177,33 +1136,14 @@
                         </div>
                         <div class="popup-glass-block">
                             <span class="title">Damage Threat</span>
-                            <span class="val">${riskThreat || 'Considerable'}</span>
+                            <span class="val">${riskThreat}</span>
                         </div>
                     `;
-                } else if (isFlashFloodWarning) {
-                    // FLASH FLOOD TEMPLATE: Source, Counties affected, and optional Damage Threat card block if found
-                    let threatBlockMarkup = "";
-                    if (riskThreat) {
-                        threatBlockMarkup = `
-                            <div class="popup-glass-block">
-                                <span class="title">Damage Threat</span>
-                                <span class="val">${riskThreat}</span>
-                            </div>`;
-                    }
-                    interactivePillGridTemplate = `
-                        <div class="popup-glass-block">
-                            <span class="title">Source</span>
-                            <span class="val">${extractedSourceText}</span>
-                        </div>
-                        ${threatBlockMarkup}
-                    `;
-                } else if (isStandardFloodWarning) {
-                    // FLOOD & HYDRO CLASSIFICATIONS: Strictly limits output cards to render ONLY counties rows below header track
-                    interactivePillGridTemplate = "";
                 }
 
                 L.geoJSON(feature, {
                     pane: 'alertsPane', 
+                    // FIXED OVERRIDE STRIP: Set stroke to false to completely hide white borders outside the colored regions
                     style: { stroke: false, fillColor: strokeColor, fillOpacity: fillAlpha },
                     onEachFeature: function(f, layer) {
                         layer.bindPopup(`
@@ -1277,11 +1217,6 @@
             radarLayers[currentRadarIndex].setOpacity(0.0);
             currentRadarIndex = (currentRadarIndex + 1) % radarLayers.length;
             radarLayers[currentRadarIndex].setOpacity(0.85);
-        }
-
-        function togglePlayback() {
-            playbackActive = !playbackActive;
-            document.getElementById('play-btn').innerText = playbackActive ? "PAUSE" : "RESUME";
         }
 
         function executeLocalTargetReset() {
