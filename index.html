@@ -30,6 +30,23 @@
             z-index: 10000000 !important;
         }
 
+        /* FIXED BACKGROUND OVERRIDE: Strips Leaflet's native white popup wrapper layout entirely */
+        .leaflet-popup-content-wrapper {
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+        }
+        
+        /* FIXED BACKGROUND OVERRIDE: Strips Leaflet's native white popup bottom pointer tip */
+        .leaflet-popup-tip {
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+
+        .leaflet-popup-content {
+            margin: 0 !important;
+        }
+
         .radar-broadcast-pane {
             pointer-events: none !important; 
         }
@@ -221,36 +238,6 @@
         #play-btn { background: #22c55e; border: none; color: white; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; }
         #time-display { font-size: 11px; font-family: monospace; color: #22c55e; font-weight: bold; }
 
-        #dbz-legend {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw; 
-            z-index: 99999;
-            background: rgba(10, 11, 15, 0.96);
-            border-bottom: 2px solid #2a2c35;
-            padding: 6px 0 4px 0; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .gradient-bar {
-            width: 100vw; 
-            height: 14px; 
-            background: linear-gradient(to right,
-                #87ceeb 0%,   #0055ff 15%,  
-                #a3ffa3 16%,  #008000 35%,  
-                #ffff33 36%,  #ff8c00 55%,  
-                #ff4d4d 56%,  #8b0000 70%,  
-                #ff66cc 71%,  #ff00aa 80%,  
-                #000000 81%,  #1a1b21 87%,  
-                #404040 88%,  #737373 92%,  
-                #b3b3b3 93%,  #e6e6e6 96%,  
-                #ffffff 97%,  #ffffff 100%  
-            );
-        }
-
         #right-alerts-sidebar {
             position: fixed;
             top: 105px;
@@ -309,13 +296,6 @@
             border-radius: 50%;
         }
 
-        .sidebar-scroll-feed {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 0 14px 14px 14px;
-            box-sizing: border-box;
-        }
-
         .sidebar-feed-card {
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             padding: 10px 0;
@@ -346,6 +326,7 @@
             margin-top: 1px;
         }
 
+        /* CUSTOM POPUP DESIGN SYSTEM MATCHING SCREENSHOT 2026-06-21 202603.png */
         .nws-screenshot-popup-container {
             width: 250px;
             padding: 12px;
@@ -353,6 +334,7 @@
             color: #ffffff;
             font-family: Arial, sans-serif;
             position: relative;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         }
         .nws-screenshot-popup-container.theme-severe {
             background: linear-gradient(135deg, #7c8803 0%, #4e5501 100%);
@@ -595,6 +577,7 @@
         var map;
         var playbackActive = true;
         var masterAlertFeatures = [];
+        var instantAlertCount = 0;
         var radarLayers = [];
         var radarFramesPaths = []; 
         var currentRadarIndex = 0;
@@ -606,6 +589,9 @@
         var animationIntervalId = null;
         var activeNwsTextMapCache = {}; 
 
+        var centerLat = 38.9742;
+        var centerLng = -90.9664;
+
         var fullUSRadarDictionary = [
             { id: "abc", lat: 40.65, lon: -111.43, name: "Salt Lake City, UT" },
             { id: "abr", lat: 45.46, lon: -98.41, name: "Aberdeen, SD" },
@@ -616,7 +602,7 @@
 
         window.onload = function() {
             map = L.map('map', {
-                center: [38.9742, -90.9664],
+                center: [centerLat, centerLng],
                 zoom: 5, minZoom: 3, maxZoom: 18, zoomControl: false
             });
 
@@ -625,6 +611,7 @@
             map.getPane('usMosaicPane').className += ' radar-broadcast-pane mrms-color-matrix';
             map.createPane('singleSitePane').style.zIndex = 400;
             map.getPane('singleSitePane').className += ' radar-broadcast-pane';
+            
             map.createPane('alertsPane').style.zIndex = 700;
             map.createPane('labelsPane').style.zIndex = 800;
 
@@ -636,11 +623,18 @@
             assembleCompleteNEXRADMenu();
             initRainViewerRadar();
             loadWeatherAlertPipeline();
+
+            map.on('zoomend move moveend', recalibratePerimeterGradientMask);
+
+            document.addEventListener("visibilitychange", function() {
+                if (!document.hidden) loadWeatherAlertPipeline();
+            });
         };
 
         function toggleTopLeftControlPanel() { document.getElementById('hud-panel').classList.toggle('collapsed'); }
         function toggleRightAlertsSidebarPanel() { document.getElementById('right-alerts-sidebar').classList.toggle('collapsed'); }
         function closeNwsTextStatementModal() { document.getElementById('raw-text-modal-backdrop').style.display = 'none'; }
+        
         function launchNwsTextStatementModal(alertId) {
             var cachedRecord = activeNwsTextMapCache[alertId];
             if (!cachedRecord) return;
@@ -658,8 +652,11 @@
                             const ev = (f.properties.event || "").toUpperCase();
                             return ev.includes("WARNING");
                         });
-                        document.getElementById('badge-counter-element').innerText = masterAlertFeatures.length;
-                        document.getElementById('sidebar-counter-string').innerText = masterAlertFeatures.length;
+
+                        instantAlertCount = masterAlertFeatures.length;
+                        document.getElementById('badge-counter-element').innerText = instantAlertCount;
+                        document.getElementById('sidebar-counter-string').innerText = instantAlertCount;
+                        
                         rebuildSidebarAlertFeedDOM();
                         plotWarningPolygonsOnMap();
                     }
@@ -670,21 +667,37 @@
             let container = document.getElementById('sidebar-feed-container');
             if(!container) return; container.innerHTML = "";
             if(masterAlertFeatures.length === 0) {
-                container.innerHTML = `<div style="font-size:11px; color:#64748b; padding:20px 0; text-align:center;">No alerts.</div>`;
+                container.innerHTML = `<div style="font-size:11px; color:#64748b; padding:20px 0; text-align:center;">No alerts detected.</div>`;
                 return;
             }
+
             masterAlertFeatures.forEach(feature => {
                 const prop = feature.properties || {};
+                const id = prop.id || Math.random().toString();
+                const eventName = prop.event || "Advisory";
+                const eventUpper = eventName.toUpperCase();
+                const sectors = (prop.areaDesc || "Regional Track").split(';')[0];
+
+                let derivedHexValue = "#a855f7"; 
+                if(eventUpper.includes("TORNADO")) { derivedHexValue = "#FF0000"; }
+                else if(eventUpper.includes("SEVERE") && eventUpper.includes("THUNDERSTORM")) { derivedHexValue = "#FFAA00"; }
+                else if(eventUpper.includes("FLASH") && eventUpper.includes("FLOOD")) { derivedHexValue = "#00FF00"; }
+                else if(eventUpper.includes("FLOOD")) { derivedHexValue = "#008000"; }
+
                 let cardNode = document.createElement('div');
                 cardNode.className = "sidebar-feed-card";
-                cardNode.onclick = () => { launchNwsTextStatementModal(prop.id || Math.random()); };
-                cardNode.innerHTML = `<div class="card-badge">${prop.event}</div><div class="card-sectors">${prop.areaDesc.split(';')[0]}</div>`;
+                cardNode.onclick = () => { launchNwsTextStatementModal(id); };
+                cardNode.innerHTML = `
+                    <div class="card-badge" style="color: ${derivedHexValue} !important;">${eventName}</div>
+                    <div class="card-sectors">Sector: ${sectors}</div>
+                `;
                 container.appendChild(cardNode);
             });
         }
 
         function plotWarningPolygonsOnMap() {
             polygonAlertGroup.clearLayers();
+
             masterAlertFeatures.forEach(feature => {
                 if (!feature.geometry || !feature.geometry.coordinates) return;
                 const properties = feature.properties || {};
@@ -743,6 +756,7 @@
 
                 activeNwsTextMapCache[alertId] = { title: eventName, text: coreAdvisoryNarrative.trim() };
 
+                // RESTORED OUTLINE STROKE VALUES: Swapped stroke: false back to true with native matching hex weights
                 let interactivePillGridTemplate = "";
                 if (isTornado) {
                     interactivePillGridTemplate = `
@@ -771,7 +785,7 @@
 
                 L.geoJSON(feature, {
                     pane: 'alertsPane', 
-                    style: { stroke: false, fillColor: strokeColor, fillOpacity: fillAlpha },
+                    style: { stroke: true, color: strokeColor, weight: 1.5, opacity: 0.8, fillColor: strokeColor, fillOpacity: fillAlpha },
                     onEachFeature: function(f, layer) {
                         layer.bindPopup(`
                             <div class="nws-screenshot-popup-container ${popupThemeClass}">
