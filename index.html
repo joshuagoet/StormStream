@@ -257,7 +257,7 @@
             { id: "eax", lat: 38.82, lon: -94.26, name: "Kansas City, MO" }
         ];
 
-        // Safe Tile Layer interceptor to mask tile 404s gracefully
+        // SafeTileLayer intercepts 404 responses and replaces them with a transparent fallback pixel
         var SafeTileLayer = L.TileLayer.extend({
             createTile: function(coords, done) {
                 var tile = L.TileLayer.prototype.createTile.call(this, coords, done);
@@ -502,21 +502,24 @@
             });
         }
 
-        // RAINVIEWER TILE LOADER: Query parameter API key auth format to avoid CORS preflight blocks
+        // RAINVIEWER V2 TILE PATH SYNTAX: Embeds API Key inside the URL path string
         function initRainViewerRadar() {
             fetch("https://api.rainviewer.com/public/weather-maps.json")
                 .then(res => res.json())
                 .then(metadata => {
                     if (!metadata || !metadata.radar || !metadata.radar.past) return;
-                    radarFramesPaths = metadata.radar.past.slice(-5).map(f => f.path);
-                    currentActiveGlobalPath = radarFramesPaths[radarFramesPaths.length - 1];
-                    var timeBracketToken = Math.floor(Date.now() / 600000);
+                    
+                    // RainViewer API v2 timestamp array
+                    radarFramesPaths = metadata.radar.past.slice(-5).map(f => f.time);
+                    var currentTimestamp = radarFramesPaths[radarFramesPaths.length - 1];
+                    currentActiveGlobalPath = currentTimestamp;
                     
                     radarLayers.forEach(layer => map.removeLayer(layer));
                     radarLayers = [];
 
-                    radarFramesPaths.forEach((path) => {
-                        const tileUrl = 'https://tilecache.rainviewer.com' + path + '/256/{z}/{x}/{y}/2/0_0.png?key=' + RAINVIEWER_API_KEY + '&cb=' + timeBracketToken;
+                    radarFramesPaths.forEach((timestamp) => {
+                        // RainViewer v2 path structure: /v2/radar/{time}/256/{z}/{x}/{y}/2/0_0.png?key={API_KEY}
+                        const tileUrl = 'https://tilecache.rainviewer.com/v2/radar/' + timestamp + '/256/{z}/{x}/{y}/2/0_0.png?key=' + RAINVIEWER_API_KEY;
                         const radarLayer = createSafeTileLayer(tileUrl, {
                             opacity: 0.0,
                             maxNativeZoom: 6, 
@@ -592,12 +595,12 @@
                 pane: 'labelsPane' 
             }).addTo(map);
             
-            var targetTilePath = currentActiveGlobalPath ? currentActiveGlobalPath : "/v2/radar/nowcast";
-            var timeBracketToken = Math.floor(Date.now() / 600000);
+            var targetTimestamp = currentActiveGlobalPath ? currentActiveGlobalPath : Math.floor(Date.now() / 1000);
 
             if(singleSiteRadarLayer) map.removeLayer(singleSiteRadarLayer);
             
-            var singleSiteTileUrl = 'https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/2/0_0.png?key=' + RAINVIEWER_API_KEY + '&cb=' + timeBracketToken;
+            // Single site radar tile path format with v2 key authentication
+            var singleSiteTileUrl = 'https://tilecache.rainviewer.com/v2/radar/' + targetTimestamp + '/256/{z}/{x}/{y}/2/0_0.png?key=' + RAINVIEWER_API_KEY;
             singleSiteRadarLayer = createSafeTileLayer(singleSiteTileUrl, {
                 opacity: 0.85,
                 pane: 'singleSitePane',
