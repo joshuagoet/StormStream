@@ -30,9 +30,9 @@
             pointer-events: none !important; 
         }
         
-        /* High-contrast color matrix for crisp weather radar reflectivity */
+        /* High-contrast color matrix for IEM NEXRAD reflectivity */
         .mrms-color-matrix { 
-            filter: saturate(2.3) contrast(1.4) brightness(0.9) hue-rotate(-12deg) !important; 
+            filter: saturate(2.0) contrast(1.3) brightness(0.95) !important; 
         }
 
         #menu-toggle-trigger {
@@ -230,17 +230,11 @@
         var playbackActive = true;
         var masterAlertFeatures = [];
         var radarLayers = [];
-        var radarFramesPaths = []; 
-        var currentRadarIndex = 0;
         var polygonAlertGroup;
         var currentRadarMode = 'national';
         var singleSiteRadarLayer = null;
         var singleSiteBorderCircle = null; 
-        var currentActiveGlobalPath = ""; 
-        var animationIntervalId = null;
         var activeNwsTextMapCache = {}; 
-
-        var transparentPixel = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
         var centerLat = 38.9742;
         var centerLng = -90.9664;
@@ -256,21 +250,6 @@
             { id: "ind", lat: 39.72, lon: -86.29, name: "Indianapolis, IN" },
             { id: "eax", lat: 38.82, lon: -94.26, name: "Kansas City, MO" }
         ];
-
-        // LEAFLET TILE ERROR INTERCEPTOR CLASS: Guarantees 404 tile errors never crash the DOM or show grid gaps
-        var SafeTileLayer = L.TileLayer.extend({
-            createTile: function(coords, done) {
-                var tile = L.TileLayer.prototype.createTile.call(this, coords, done);
-                tile.onerror = function() {
-                    this.src = transparentPixel;
-                };
-                return tile;
-            }
-        });
-
-        function createSafeTileLayer(url, options) {
-            return new SafeTileLayer(url, options);
-        }
 
         document.addEventListener("DOMContentLoaded", function() {
             try {
@@ -297,7 +276,7 @@
                 polygonAlertGroup = L.layerGroup().addTo(map);
 
                 assembleCompleteNEXRADMenu();
-                initRainViewerRadar();
+                initKeylessRadarService();
                 loadWeatherAlertPipeline();
             } catch (err) {
                 console.error("Map startup error handler:", err);
@@ -502,45 +481,23 @@
             });
         }
 
-        // TILE LOADER: Uses createSafeTileLayer to catch missing tiles gracefully and scale native Level 6 tiles
-        function initRainViewerRadar() {
-            fetch("https://api.rainviewer.com/public/weather-maps.json")
-                .then(res => res.json())
-                .then(metadata => {
-                    if (!metadata || !metadata.radar || !metadata.radar.past) return;
-                    radarFramesPaths = metadata.radar.past.slice(-5).map(f => f.path);
-                    currentActiveGlobalPath = radarFramesPaths[radarFramesPaths.length - 1];
-                    var timeBracketToken = Math.floor(Date.now() / 600000);
-                    
-                    radarLayers.forEach(layer => map.removeLayer(layer));
-                    radarLayers = [];
+        // OPEN KEYLESS RADAR SERVICE (IEM NEXRAD MESONET): 100% free open API route with full zoom levels 3-18
+        function initKeylessRadarService() {
+            radarLayers.forEach(layer => map.removeLayer(layer));
+            radarLayers = [];
 
-                    radarFramesPaths.forEach((path) => {
-                        const radarLayer = createSafeTileLayer('https://tilecache.rainviewer.com' + path + '/256/{z}/{x}/{y}/2/0_0.png?cb=' + timeBracketToken, {
-                            opacity: 0.0,
-                            maxNativeZoom: 6, 
-                            maxZoom: 18,
-                            tileSize: 256,
-                            zoomOffset: 0,
-                            pane: 'usMosaicPane' 
-                        });
-                        radarLayer.addTo(map);
-                        radarLayers.push(radarLayer);
-                    });
+            const mrmsMosaicLayer = L.tileLayer('https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913/{z}/{x}/{y}.png', {
+                opacity: 0.85,
+                maxNativeZoom: 12,
+                maxZoom: 18,
+                tileSize: 256,
+                pane: 'usMosaicPane'
+            });
 
-                    if(radarLayers.length > 0) {
-                        radarLayers[radarLayers.length - 1].setOpacity(0.85); 
-                        currentRadarIndex = radarLayers.length - 1;
-                        if (!animationIntervalId) animationIntervalId = setInterval(animateRadarFrames, 1200); 
-                    }
-                }).catch(err => console.error("Radar Error:", err));
-        }
-
-        function animateRadarFrames() {
-            if (!playbackActive || radarLayers.length === 0 || currentRadarMode !== 'national') return;
-            radarLayers[currentRadarIndex].setOpacity(0.0);
-            currentRadarIndex = (currentRadarIndex + 1) % radarLayers.length;
-            radarLayers[currentRadarIndex].setOpacity(0.85);
+            mrmsMosaicLayer.addTo(map);
+            radarLayers.push(mrmsMosaicLayer);
+            
+            document.getElementById('time-display').innerText = "LIVE MRMS";
         }
 
         function switchRadarMode(mode) {
@@ -549,7 +506,6 @@
             document.getElementById('radar-site-btn').classList.remove('active');
             document.getElementById('station-toggle-box').classList.remove('visible');
 
-            if (animationIntervalId) { clearInterval(animationIntervalId); animationIntervalId = null; }
             if(singleSiteRadarLayer) { map.removeLayer(singleSiteRadarLayer); singleSiteRadarLayer = null; }
             if(singleSiteBorderCircle) { map.removeLayer(singleSiteBorderCircle); singleSiteBorderCircle = null; }
 
@@ -557,16 +513,13 @@
                 document.getElementById('radar-us-btn').classList.add('active');
                 map.getPane('usMosaicPane').style.display = 'block';
                 map.getPane('singleSitePane').style.display = 'none';
-                if(radarLayers.length > 0) {
-                    radarLayers[currentRadarIndex].setOpacity(0.85);
-                    animationIntervalId = setInterval(animateRadarFrames, 1200);
-                }
+                if(radarLayers.length > 0) radarLayers[0].setOpacity(0.85);
             } else {
                 document.getElementById('radar-site-btn').classList.add('active');
                 document.getElementById('station-toggle-box').classList.add('visible');
                 map.getPane('usMosaicPane').style.display = 'none';
                 map.getPane('singleSitePane').style.display = 'block';
-                radarLayers.forEach(l => l.setOpacity(0.0));
+                if(radarLayers.length > 0) radarLayers[0].setOpacity(0.0);
                 loadSingleSiteRadar();
             }
         }
@@ -575,6 +528,7 @@
             var dropdown = document.getElementById('radar-station-dropdown');
             var selectedOption = dropdown.options[dropdown.selectedIndex];
             if (!selectedOption) return;
+            var stationId = dropdown.value.toLowerCase();
             var lat = parseFloat(selectedOption.getAttribute('data-lat'));
             var lon = parseFloat(selectedOption.getAttribute('data-lon'));
 
@@ -590,19 +544,16 @@
                 fillColor: 'transparent', 
                 pane: 'labelsPane' 
             }).addTo(map);
-            
-            var targetTilePath = currentActiveGlobalPath ? currentActiveGlobalPath : "/v2/radar/nowcast";
-            var timeBracketToken = Math.floor(Date.now() / 600000);
 
             if(singleSiteRadarLayer) map.removeLayer(singleSiteRadarLayer);
             
-            singleSiteRadarLayer = createSafeTileLayer('https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/2/0_0.png?cb=' + timeBracketToken, {
+            // KEYLESS SINGLE-SITE NEXRAD RADAR TILE ROUTE
+            singleSiteRadarLayer = L.tileLayer('https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::' + stationId.toUpperCase() + '-N0Q-0/{z}/{x}/{y}.png', {
                 opacity: 0.85,
                 pane: 'singleSitePane',
-                maxNativeZoom: 6,
+                maxNativeZoom: 12,
                 maxZoom: 18,
-                tileSize: 256,
-                zoomOffset: 0
+                tileSize: 256
             }).addTo(map);
         }
 
