@@ -257,44 +257,19 @@
             { id: "eax", lat: 38.82, lon: -94.26, name: "Kansas City, MO" }
         ];
 
-        // CUSTOM FETCH TILE ENGINE: Sends RainViewer's x-api-key HTTP Header directly to fix "API key required" errors
-        var FetchTileLayer = L.TileLayer.extend({
+        // Safe Tile Layer interceptor to mask tile 404s gracefully
+        var SafeTileLayer = L.TileLayer.extend({
             createTile: function(coords, done) {
-                var tile = document.createElement('img');
-                var url = this.getTileUrl(coords);
-
-                L.DomEvent.on(tile, 'load', L.Util.bind(this._tileOnLoad, this, done, tile));
-                L.DomEvent.on(tile, 'error', L.Util.bind(this._tileOnError, this, done, tile));
-
-                if (this.options.crossOrigin) {
-                    tile.crossOrigin = '';
-                }
-                tile.alt = '';
-                tile.setAttribute('role', 'presentation');
-
-                fetch(url, {
-                    headers: {
-                        'x-api-key': RAINVIEWER_API_KEY
-                    }
-                })
-                .then(response => {
-                    if (!response.ok) throw new Error('Http ' + response.status);
-                    return response.blob();
-                })
-                .then(blob => {
-                    tile.src = URL.createObjectURL(blob);
-                })
-                .catch(err => {
-                    tile.src = transparentPixel;
-                    done(null, tile);
-                });
-
+                var tile = L.TileLayer.prototype.createTile.call(this, coords, done);
+                tile.onerror = function() {
+                    this.src = transparentPixel;
+                };
                 return tile;
             }
         });
 
-        function createAuthenticatedTileLayer(url, options) {
-            return new FetchTileLayer(url, options);
+        function createSafeTileLayer(url, options) {
+            return new SafeTileLayer(url, options);
         }
 
         document.addEventListener("DOMContentLoaded", function() {
@@ -527,7 +502,7 @@
             });
         }
 
-        // RAINVIEWER FETCH TILE INITIALIZATION: Uses x-api-key header directly
+        // RAINVIEWER TILE LOADER: Query parameter API key auth format to avoid CORS preflight blocks
         function initRainViewerRadar() {
             fetch("https://api.rainviewer.com/public/weather-maps.json")
                 .then(res => res.json())
@@ -541,10 +516,10 @@
                     radarLayers = [];
 
                     radarFramesPaths.forEach((path) => {
-                        const tileUrl = 'https://tilecache.rainviewer.com' + path + '/256/{z}/{x}/{y}/2/0_0.png?cb=' + timeBracketToken;
-                        const radarLayer = createAuthenticatedTileLayer(tileUrl, {
+                        const tileUrl = 'https://tilecache.rainviewer.com' + path + '/256/{z}/{x}/{y}/2/0_0.png?key=' + RAINVIEWER_API_KEY + '&cb=' + timeBracketToken;
+                        const radarLayer = createSafeTileLayer(tileUrl, {
                             opacity: 0.0,
-                            maxNativeZoom: 7, 
+                            maxNativeZoom: 6, 
                             maxZoom: 18,
                             tileSize: 256,
                             zoomOffset: 0,
@@ -622,11 +597,11 @@
 
             if(singleSiteRadarLayer) map.removeLayer(singleSiteRadarLayer);
             
-            var singleSiteTileUrl = 'https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/1/1_1.png?cb=' + timeBracketToken;
-            singleSiteRadarLayer = createAuthenticatedTileLayer(singleSiteTileUrl, {
+            var singleSiteTileUrl = 'https://tilecache.rainviewer.com' + targetTilePath + '/256/{z}/{x}/{y}/2/0_0.png?key=' + RAINVIEWER_API_KEY + '&cb=' + timeBracketToken;
+            singleSiteRadarLayer = createSafeTileLayer(singleSiteTileUrl, {
                 opacity: 0.85,
                 pane: 'singleSitePane',
-                maxNativeZoom: 12,
+                maxNativeZoom: 6,
                 maxZoom: 18,
                 tileSize: 256,
                 zoomOffset: 0
